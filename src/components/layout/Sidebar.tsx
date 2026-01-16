@@ -13,7 +13,8 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  LogOut
+  LogOut,
+  Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,10 +33,16 @@ const navItems = [
   { path: '/prescriptions', label: 'Digital Prescription', icon: FileText },
 ];
 
+const adminItems = [
+  { path: '/admin-users', label: 'Admin Users', icon: Users },
+];
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const { logout, user } = useAuth();
+
+  const isAdmin = user?.role === 'admin';
 
   return (
     <aside className={cn(
@@ -81,13 +88,46 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Admin Section */}
+        {isAdmin && (
+          <>
+            {!collapsed && (
+              <div className="pt-4 pb-2">
+                <p className="text-xs font-semibold text-sidebar-muted uppercase tracking-wider px-3">
+                  Administration
+                </p>
+              </div>
+            )}
+            {adminItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              const Icon = item.icon;
+              
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    "nav-item",
+                    isActive && "nav-item-active"
+                  )}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && (
+                    <span className="text-sm font-medium truncate">{item.label}</span>
+                  )}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* User info & Logout */}
       <div className="p-3 border-t border-sidebar-border">
         {!collapsed && user && (
           <div className="mb-3 px-3 py-2 rounded-lg bg-sidebar-accent">
-            <p className="text-xs text-sidebar-muted">Logged in as</p>
             <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
             <p className="text-xs text-sidebar-muted truncate">{user.locationName}</p>
           </div>

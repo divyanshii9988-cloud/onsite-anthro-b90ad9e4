@@ -11,266 +11,73 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } from '@/components/DateRangeFilter';
 
 export default function Specialist() {
   const { specialistConsultations, addSpecialistConsultation, employees } = useData();
   const { location } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState('');
-  const [formData, setFormData] = useState({
-    speciality: '',
-    specialistName: '',
-    hospitalName: '',
-    appointmentDate: '',
-    referralReason: '',
-    notes: '',
-  });
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
+  const [formData, setFormData] = useState({ speciality: '', specialistName: '', hospitalName: '', appointmentDate: '', referralReason: '', notes: '' });
 
   const selectedEmp = employees.find(e => e.id === selectedEmployee);
+  const filteredConsultations = filterByDateRange(specialistConsultations, dateRange, 'appointmentDate');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedEmployee || !formData.speciality || !formData.specialistName || !formData.appointmentDate) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    addSpecialistConsultation({
-      employeeId: selectedEmployee,
-      employeeName: selectedEmp?.name || '',
-      speciality: formData.speciality,
-      specialistName: formData.specialistName,
-      hospitalName: formData.hospitalName || undefined,
-      appointmentDate: new Date(formData.appointmentDate),
-      referralReason: formData.referralReason,
-      status: 'scheduled',
-      notes: formData.notes || undefined,
-      locationId: location?.id || '',
-    });
-
+    if (!selectedEmployee || !formData.speciality || !formData.specialistName || !formData.appointmentDate) { toast.error('Please fill in all required fields'); return; }
+    addSpecialistConsultation({ employeeId: selectedEmployee, employeeName: selectedEmp?.name || '', speciality: formData.speciality, specialistName: formData.specialistName, hospitalName: formData.hospitalName || undefined, appointmentDate: new Date(formData.appointmentDate), referralReason: formData.referralReason, status: 'scheduled', notes: formData.notes || undefined, locationId: location?.id || '' });
     toast.success('Specialist consultation scheduled successfully!');
     setIsDialogOpen(false);
     setSelectedEmployee('');
-    setFormData({
-      speciality: '', specialistName: '', hospitalName: '',
-      appointmentDate: '', referralReason: '', notes: ''
-    });
+    setFormData({ speciality: '', specialistName: '', hospitalName: '', appointmentDate: '', referralReason: '', notes: '' });
   };
 
   const exportToCSV = () => {
     const headers = ['Date', 'Employee', 'Speciality', 'Specialist', 'Hospital', 'Reason', 'Status'];
-    const data = specialistConsultations.map(c => [
-      new Date(c.appointmentDate).toLocaleDateString(),
-      c.employeeName,
-      c.speciality,
-      c.specialistName,
-      c.hospitalName || '-',
-      c.referralReason,
-      c.status
-    ]);
-    
+    const data = filteredConsultations.map(c => [new Date(c.appointmentDate).toLocaleDateString(), c.employeeName, c.speciality, c.specialistName, c.hospitalName || '-', c.referralReason, c.status]);
     const csv = [headers, ...data].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `specialist-consultations-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `specialist-consultations-${dateRange.label.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
-  const specialities = [
-    'Cardiology', 'Dermatology', 'ENT', 'Gastroenterology',
-    'Neurology', 'Ophthalmology', 'Orthopedics', 'Psychiatry',
-    'Pulmonology', 'Urology', 'Gynecology', 'Other'
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-success/10 text-success';
-      case 'scheduled': return 'bg-info/10 text-info';
-      case 'cancelled': return 'bg-destructive/10 text-destructive';
-      default: return 'bg-muted text-muted-foreground';
-    }
-  };
+  const specialities = ['Cardiology', 'Dermatology', 'ENT', 'Gastroenterology', 'Neurology', 'Ophthalmology', 'Orthopedics', 'Psychiatry', 'Pulmonology', 'Urology', 'Gynecology', 'Other'];
+  const getStatusColor = (status: string) => { switch (status) { case 'completed': return 'bg-success/10 text-success'; case 'scheduled': return 'bg-info/10 text-info'; case 'cancelled': return 'bg-destructive/10 text-destructive'; default: return 'bg-muted text-muted-foreground'; } };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="page-header">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Specialist Consultation</h1>
-          <p className="text-muted-foreground">Track specialist referrals and appointments</p>
-        </div>
+        <div><h1 className="text-2xl font-bold text-foreground">Specialist Consultation</h1><p className="text-muted-foreground">Track specialist referrals and appointments</p></div>
         <div className="flex gap-3">
-          <Button onClick={exportToCSV} variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export
-          </Button>
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          <Button onClick={exportToCSV} variant="outline" className="gap-2"><Download className="w-4 h-4" />Export</Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                Schedule Consultation
-              </Button>
-            </DialogTrigger>
+            <DialogTrigger asChild><Button className="gap-2"><Plus className="w-4 h-4" />Schedule Consultation</Button></DialogTrigger>
             <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  Schedule Specialist Consultation
-                </DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle className="flex items-center gap-2"><Calendar className="w-5 h-5" />Schedule Specialist Consultation</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                <div className="form-group">
-                  <Label className="form-label">Employee *</Label>
-                  <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select employee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.map(emp => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {emp.name} ({emp.employeeId})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="form-group">
-                    <Label className="form-label">Speciality *</Label>
-                    <Select 
-                      value={formData.speciality} 
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, speciality: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {specialities.map(spec => (
-                          <SelectItem key={spec} value={spec}>{spec}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="form-group">
-                    <Label className="form-label">Appointment Date *</Label>
-                    <Input
-                      type="datetime-local"
-                      value={formData.appointmentDate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, appointmentDate: e.target.value }))}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="form-group">
-                    <Label className="form-label">Specialist Name *</Label>
-                    <Input
-                      value={formData.specialistName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, specialistName: e.target.value }))}
-                      placeholder="Dr. Name"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <Label className="form-label">Hospital / Clinic</Label>
-                    <Input
-                      value={formData.hospitalName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, hospitalName: e.target.value }))}
-                      placeholder="Hospital name"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <Label className="form-label">Referral Reason</Label>
-                  <Textarea
-                    value={formData.referralReason}
-                    onChange={(e) => setFormData(prev => ({ ...prev, referralReason: e.target.value }))}
-                    placeholder="Reason for specialist referral..."
-                    rows={2}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <Label className="form-label">Notes</Label>
-                  <Textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Any additional notes..."
-                    rows={2}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Schedule</Button>
-                </div>
+                <div className="form-group"><Label className="form-label">Employee *</Label><Select value={selectedEmployee} onValueChange={setSelectedEmployee}><SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger><SelectContent>{employees.map(emp => (<SelectItem key={emp.id} value={emp.id}>{emp.name} ({emp.employeeId})</SelectItem>))}</SelectContent></Select></div>
+                <div className="grid grid-cols-2 gap-4"><div className="form-group"><Label className="form-label">Speciality *</Label><Select value={formData.speciality} onValueChange={(value) => setFormData(prev => ({ ...prev, speciality: value }))}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{specialities.map(spec => (<SelectItem key={spec} value={spec}>{spec}</SelectItem>))}</SelectContent></Select></div><div className="form-group"><Label className="form-label">Appointment Date *</Label><Input type="datetime-local" value={formData.appointmentDate} onChange={(e) => setFormData(prev => ({ ...prev, appointmentDate: e.target.value }))} required /></div></div>
+                <div className="grid grid-cols-2 gap-4"><div className="form-group"><Label className="form-label">Specialist Name *</Label><Input value={formData.specialistName} onChange={(e) => setFormData(prev => ({ ...prev, specialistName: e.target.value }))} placeholder="Dr. Name" required /></div><div className="form-group"><Label className="form-label">Hospital / Clinic</Label><Input value={formData.hospitalName} onChange={(e) => setFormData(prev => ({ ...prev, hospitalName: e.target.value }))} placeholder="Hospital name" /></div></div>
+                <div className="form-group"><Label className="form-label">Referral Reason</Label><Textarea value={formData.referralReason} onChange={(e) => setFormData(prev => ({ ...prev, referralReason: e.target.value }))} placeholder="Reason for specialist referral..." rows={2} /></div>
+                <div className="form-group"><Label className="form-label">Notes</Label><Textarea value={formData.notes} onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))} placeholder="Any additional notes..." rows={2} /></div>
+                <div className="flex justify-end gap-3 pt-4"><Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button><Button type="submit">Schedule</Button></div>
               </form>
             </DialogContent>
           </Dialog>
         </div>
       </div>
-
-      {/* Consultations Table */}
       <Card className="content-panel">
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <UserCheck className="w-5 h-5 text-primary" />
-            Scheduled Consultations ({specialistConsultations.length})
-          </CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-4"><CardTitle className="text-lg flex items-center gap-2"><UserCheck className="w-5 h-5 text-primary" />Scheduled Consultations ({filteredConsultations.length})</CardTitle></CardHeader>
         <CardContent>
-          {specialistConsultations.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Speciality</TableHead>
-                    <TableHead>Specialist</TableHead>
-                    <TableHead>Hospital</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {specialistConsultations.map((consultation) => (
-                    <TableRow key={consultation.id}>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(consultation.appointmentDate).toLocaleDateString()}
-                        <br />
-                        <span className="text-xs">
-                          {new Date(consultation.appointmentDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-medium">{consultation.employeeName}</TableCell>
-                      <TableCell>{consultation.speciality}</TableCell>
-                      <TableCell>{consultation.specialistName}</TableCell>
-                      <TableCell>{consultation.hospitalName || '-'}</TableCell>
-                      <TableCell className="max-w-xs truncate">{consultation.referralReason || '-'}</TableCell>
-                      <TableCell>
-                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium capitalize ${getStatusColor(consultation.status)}`}>
-                          {consultation.status}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <UserCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>No specialist consultations scheduled</p>
-            </div>
-          )}
+          {filteredConsultations.length > 0 ? (
+            <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Employee</TableHead><TableHead>Speciality</TableHead><TableHead>Specialist</TableHead><TableHead>Hospital</TableHead><TableHead>Reason</TableHead><TableHead>Status</TableHead></TableRow></TableHeader><TableBody>{filteredConsultations.map((consultation) => (<TableRow key={consultation.id}><TableCell className="text-muted-foreground">{new Date(consultation.appointmentDate).toLocaleDateString()}<br /><span className="text-xs">{new Date(consultation.appointmentDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span></TableCell><TableCell className="font-medium">{consultation.employeeName}</TableCell><TableCell>{consultation.speciality}</TableCell><TableCell>{consultation.specialistName}</TableCell><TableCell>{consultation.hospitalName || '-'}</TableCell><TableCell className="max-w-xs truncate">{consultation.referralReason || '-'}</TableCell><TableCell><span className={`inline-block px-2 py-1 rounded text-xs font-medium capitalize ${getStatusColor(consultation.status)}`}>{consultation.status}</span></TableCell></TableRow>))}</TableBody></Table></div>
+          ) : (<div className="text-center py-12 text-muted-foreground"><UserCheck className="w-12 h-12 mx-auto mb-3 opacity-30" /><p>No specialist consultations scheduled</p></div>)}
         </CardContent>
       </Card>
     </div>

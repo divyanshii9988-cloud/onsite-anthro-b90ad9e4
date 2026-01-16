@@ -6,6 +6,7 @@ export interface Employee {
   name: string;
   email: string;
   mobile: string;
+  companyName?: string;
   department?: string;
   designation?: string;
   age?: number;

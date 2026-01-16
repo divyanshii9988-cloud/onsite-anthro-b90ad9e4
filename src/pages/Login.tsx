@@ -6,12 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Eye, EyeOff, Loader2, MapPin } from 'lucide-react';
 import truworthLogo from '@/assets/truworth-logo.jpeg';
+
+const locations = [
+  { id: 'loc1', name: 'Bangalore', clientName: 'Infosys Ltd' },
+  { id: 'loc2', name: 'Mumbai', clientName: 'Tata Consultancy Services' },
+  { id: 'loc3', name: 'Hyderabad', clientName: 'Wipro Technologies' },
+];
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,10 +30,16 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!selectedLocation) {
+      setError('Please select a location');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      const success = await login(email, password);
+      const success = await login(email, password, selectedLocation);
       if (success) {
         navigate('/dashboard');
       } else {
@@ -100,6 +114,28 @@ export default function Login() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+
+              {/* Location Selection */}
+              <div className="form-group">
+                <Label htmlFor="location" className="form-label">
+                  Select Location
+                </Label>
+                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                  <SelectTrigger className="h-11">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-muted-foreground" />
+                      <SelectValue placeholder="Choose your clinic location" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((loc) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.name} - {loc.clientName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               
               <div className="form-group">
                 <Label htmlFor="email" className="form-label">
@@ -160,8 +196,8 @@ export default function Login() {
             <div className="mt-6 p-4 bg-secondary/50 rounded-lg">
               <p className="text-xs font-medium text-muted-foreground mb-2">Demo Credentials:</p>
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p><strong>Doctor:</strong> doctor@infosys.truworth.com / demo123</p>
-                <p><strong>Nurse:</strong> nurse@tcs.truworth.com / demo123</p>
+                <p><strong>Doctor:</strong> doctor@truworth.com / demo123</p>
+                <p><strong>Nurse:</strong> nurse@truworth.com / demo123</p>
                 <p><strong>Admin:</strong> admin@truworth.com / admin123</p>
               </div>
             </div>
