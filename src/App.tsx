@@ -19,6 +19,7 @@ import BioWaste from "./pages/BioWaste";
 import Ambulance from "./pages/Ambulance";
 import Specialist from "./pages/Specialist";
 import Prescriptions from "./pages/Prescriptions";
+import AdminUsers from "./pages/AdminUsers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +59,7 @@ function AppRoutes() {
       <Route path="/ambulance" element={<ProtectedRoute><Ambulance /></ProtectedRoute>} />
       <Route path="/specialist" element={<ProtectedRoute><Specialist /></ProtectedRoute>} />
       <Route path="/prescriptions" element={<ProtectedRoute><Prescriptions /></ProtectedRoute>} />
+      <Route path="/admin-users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

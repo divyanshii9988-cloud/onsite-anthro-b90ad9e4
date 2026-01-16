@@ -11,13 +11,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } from '@/components/DateRangeFilter';
 
 export default function WalkIns() {
   const { walkIns, addWalkIn, employees, medicines } = useData();
   const { location, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [employeeSearchQuery, setEmployeeSearchQuery] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
   const [formData, setFormData] = useState({
     consultationType: 'doctor' as 'doctor' | 'nurse',
     chiefComplaint: '',
@@ -32,9 +35,19 @@ export default function WalkIns() {
     prescription: '',
   });
 
+  // Search employees by text input
+  const matchingEmployees = employeeSearchQuery.length >= 2 
+    ? employees.filter(e => 
+        e.name.toLowerCase().includes(employeeSearchQuery.toLowerCase()) ||
+        e.employeeId.toLowerCase().includes(employeeSearchQuery.toLowerCase())
+      ).slice(0, 5)
+    : [];
+
   const selectedEmp = employees.find(e => e.id === selectedEmployee);
   
-  const filteredWalkIns = walkIns.filter(w => {
+  // Filter walk-ins by date range and search
+  const dateFilteredWalkIns = filterByDateRange(walkIns, dateRange, 'createdAt');
+  const filteredWalkIns = dateFilteredWalkIns.filter(w => {
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       return w.employeeName.toLowerCase().includes(lowerQuery) || 
@@ -42,6 +55,12 @@ export default function WalkIns() {
     }
     return true;
   });
+
+  const handleSelectEmployee = (empId: string) => {
+    const emp = employees.find(e => e.id === empId);
+    setSelectedEmployee(empId);
+    setEmployeeSearchQuery(emp?.name || '');
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +98,7 @@ export default function WalkIns() {
     toast.success('Walk-in recorded successfully!');
     setIsDialogOpen(false);
     setSelectedEmployee('');
+    setEmployeeSearchQuery('');
     setFormData({
       consultationType: 'doctor',
       chiefComplaint: '', diagnosis: '',
@@ -104,7 +124,7 @@ export default function WalkIns() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `walk-ins-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `walk-ins-${dateRange.label.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
@@ -116,6 +136,7 @@ export default function WalkIns() {
           <p className="text-muted-foreground">Track doctor/nurse consultations</p>
         </div>
         <div className="flex gap-3">
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
           <Button onClick={exportToCSV} variant="outline" className="gap-2">
             <Download className="w-4 h-4" />
             Export
@@ -132,22 +153,40 @@ export default function WalkIns() {
                 <DialogTitle>Record New Walk-in</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-6 pt-4">
-                {/* Employee Selection */}
+                {/* Employee Selection - Text Input */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="form-group col-span-2">
-                    <Label className="form-label">Select Employee *</Label>
-                    <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Search and select employee" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {employees.map(emp => (
-                          <SelectItem key={emp.id} value={emp.id}>
-                            {emp.name} ({emp.employeeId})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label className="form-label">Search Employee *</Label>
+                    <div className="relative">
+                      <Input
+                        value={employeeSearchQuery}
+                        onChange={(e) => {
+                          setEmployeeSearchQuery(e.target.value);
+                          if (selectedEmployee) setSelectedEmployee('');
+                        }}
+                        placeholder="Type employee name or ID to search..."
+                      />
+                      {matchingEmployees.length > 0 && !selectedEmployee && (
+                        <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                          {matchingEmployees.map(emp => (
+                            <button
+                              key={emp.id}
+                              type="button"
+                              onClick={() => handleSelectEmployee(emp.id)}
+                              className="w-full text-left px-3 py-2 hover:bg-muted transition-colors"
+                            >
+                              <span className="font-medium">{emp.name}</span>
+                              <span className="text-muted-foreground ml-2">({emp.employeeId})</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {selectedEmp && (
+                      <p className="text-xs text-primary mt-1">
+                        Selected: {selectedEmp.name} ({selectedEmp.employeeId})
+                      </p>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -306,7 +345,7 @@ export default function WalkIns() {
         <CardHeader className="pb-4">
           <CardTitle className="text-lg flex items-center gap-2">
             <Stethoscope className="w-5 h-5 text-primary" />
-            Today's Walk-ins ({filteredWalkIns.length})
+            Walk-ins ({filteredWalkIns.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -351,7 +390,7 @@ export default function WalkIns() {
                 {filteredWalkIns.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No walk-ins recorded today
+                      No walk-ins recorded in this period
                     </TableCell>
                   </TableRow>
                 )}

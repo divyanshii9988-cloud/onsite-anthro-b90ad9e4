@@ -1,61 +1,67 @@
+import { useState } from 'react';
 import { 
   Users, 
   Stethoscope, 
   AlertTriangle, 
   Pill, 
-  Package, 
   TrendingUp,
-  Calendar,
   Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } from '@/components/DateRangeFilter';
 
 export default function Dashboard() {
-  const { getTodayStats, employees, walkIns, medicines, emergencies } = useData();
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
+  const { employees, walkIns, emergencies } = useData();
   const { location } = useAuth();
   
-  const todayStats = getTodayStats(location?.id);
+  // Filter data by date range
+  const filteredWalkIns = filterByDateRange(walkIns, dateRange, 'createdAt');
+  const filteredEmergencies = filterByDateRange(emergencies, dateRange, 'createdAt');
+  const filteredEmployees = filterByDateRange(employees, dateRange, 'registeredAt');
+
+  // Calculate medicines dispensed
+  const medicinesDispensed = filteredWalkIns.reduce((acc, w) => {
+    return acc + (w.medicinesDispensed?.reduce((sum, m) => sum + m.quantity, 0) || 0);
+  }, 0);
   
   const statCards = [
     { 
-      label: "Today's Walk-ins", 
-      value: todayStats.walkIns, 
+      label: "Walk-ins", 
+      value: filteredWalkIns.length, 
       icon: Stethoscope, 
       color: 'bg-primary',
-      trend: '+12% from yesterday'
+      trend: dateRange.label
     },
     { 
       label: 'Total Registrations', 
       value: employees.length, 
       icon: Users, 
       color: 'bg-info',
-      trend: `${todayStats.registrations} new today`
+      trend: `${filteredEmployees.length} in period`
     },
     { 
       label: 'Medicines Dispensed', 
-      value: todayStats.medicinesDispensed, 
+      value: medicinesDispensed, 
       icon: Pill, 
       color: 'bg-success',
-      trend: 'Today'
+      trend: dateRange.label
     },
     { 
       label: 'Emergencies', 
-      value: todayStats.emergencies, 
+      value: filteredEmergencies.length, 
       icon: AlertTriangle, 
       color: 'bg-warning',
-      trend: 'Today'
+      trend: dateRange.label
     },
   ];
 
-  const lowStockMedicines = medicines.filter(m => m.quantity <= m.minStock);
-  const recentWalkIns = walkIns.slice(-5).reverse();
-
   const exportToCSV = () => {
     const headers = ['Date', 'Employee', 'Type', 'Complaint', 'Doctor'];
-    const data = walkIns.map(w => [
+    const data = filteredWalkIns.map(w => [
       new Date(w.createdAt).toLocaleDateString(),
       w.employeeName,
       w.consultationType,
@@ -68,7 +74,7 @@ export default function Dashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `clinic-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `clinic-report-${dateRange.label.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
@@ -78,12 +84,15 @@ export default function Dashboard() {
       <div className="page-header">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of today's clinic activity</p>
+          <p className="text-muted-foreground">Overview of clinic activity for {dateRange.label.toLowerCase()}</p>
         </div>
-        <Button onClick={exportToCSV} variant="outline" className="gap-2">
-          <Download className="w-4 h-4" />
-          Export Report
-        </Button>
+        <div className="flex gap-3">
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          <Button onClick={exportToCSV} variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            Export Report
+          </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -112,92 +121,6 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Walk-ins */}
-        <Card className="content-panel">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              Recent Walk-ins
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentWalkIns.length > 0 ? (
-              <div className="space-y-3">
-                {recentWalkIns.map((walkIn) => (
-                  <div 
-                    key={walkIn.id} 
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                  >
-                    <div>
-                      <p className="font-medium text-foreground">{walkIn.employeeName}</p>
-                      <p className="text-sm text-muted-foreground">{walkIn.chiefComplaint}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        walkIn.consultationType === 'doctor' 
-                          ? 'bg-primary/10 text-primary' 
-                          : 'bg-info/10 text-info'
-                      }`}>
-                        {walkIn.consultationType === 'doctor' ? 'Doctor' : 'Nurse'}
-                      </span>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(walkIn.createdAt).toLocaleTimeString('en-IN', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Stethoscope className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>No walk-ins recorded today</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Inventory Alerts */}
-        <Card className="content-panel">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Package className="w-5 h-5 text-warning" />
-              Low Stock Alerts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {lowStockMedicines.length > 0 ? (
-              <div className="space-y-3">
-                {lowStockMedicines.map((medicine) => (
-                  <div 
-                    key={medicine.id} 
-                    className="flex items-center justify-between p-3 bg-warning/5 border border-warning/20 rounded-lg"
-                  >
-                    <div>
-                      <p className="font-medium text-foreground">{medicine.name}</p>
-                      <p className="text-sm text-muted-foreground">{medicine.brand} • {medicine.category}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-warning">{medicine.quantity}</p>
-                      <p className="text-xs text-muted-foreground">Min: {medicine.minStock}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>All medicines adequately stocked</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Quick Actions */}
       <Card className="content-panel">
         <CardHeader className="pb-4">
@@ -209,8 +132,8 @@ export default function Dashboard() {
               { label: 'New Walk-in', path: '/walk-ins', icon: Stethoscope },
               { label: 'Register Employee', path: '/employees', icon: Users },
               { label: 'Log Emergency', path: '/emergencies', icon: AlertTriangle },
-              { label: 'Add Medicine', path: '/inventory', icon: Package },
-              { label: 'Waste Log', path: '/biowaste', icon: Package },
+              { label: 'Add Medicine', path: '/inventory', icon: Pill },
+              { label: 'Waste Log', path: '/biowaste', icon: Pill },
               { label: 'Prescription', path: '/prescriptions', icon: Pill },
             ].map((action) => {
               const Icon = action.icon;

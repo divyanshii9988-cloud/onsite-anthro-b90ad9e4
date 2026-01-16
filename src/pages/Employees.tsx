@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, UserPlus, Download, Filter } from 'lucide-react';
+import { Search, UserPlus, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,16 +9,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useData } from '@/contexts/DataContext';
 import { toast } from 'sonner';
+import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } from '@/components/DateRangeFilter';
 
 export default function Employees() {
   const { employees, addEmployee, searchEmployees } = useData();
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
   const [formData, setFormData] = useState({
     employeeId: '',
     name: '',
     email: '',
     mobile: '',
+    companyName: '',
     department: '',
     designation: '',
     age: '',
@@ -26,12 +29,19 @@ export default function Employees() {
     bloodGroup: '',
   });
 
-  const filteredEmployees = searchQuery ? searchEmployees(searchQuery) : employees;
+  // First filter by date range, then by search query
+  const dateFilteredEmployees = filterByDateRange(employees, dateRange, 'registeredAt');
+  const filteredEmployees = searchQuery ? dateFilteredEmployees.filter(emp => 
+    emp.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.mobile.includes(searchQuery)
+  ) : dateFilteredEmployees;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.employeeId || !formData.name || !formData.email || !formData.mobile) {
+    if (!formData.employeeId || !formData.name || !formData.email || !formData.mobile || !formData.companyName) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -41,6 +51,7 @@ export default function Employees() {
       name: formData.name,
       email: formData.email,
       mobile: formData.mobile,
+      companyName: formData.companyName,
       department: formData.department || undefined,
       designation: formData.designation || undefined,
       age: formData.age ? parseInt(formData.age) : undefined,
@@ -51,16 +62,17 @@ export default function Employees() {
     toast.success('Employee registered successfully!');
     setIsDialogOpen(false);
     setFormData({
-      employeeId: '', name: '', email: '', mobile: '',
+      employeeId: '', name: '', email: '', mobile: '', companyName: '',
       department: '', designation: '', age: '', gender: '', bloodGroup: ''
     });
   };
 
   const exportToCSV = () => {
-    const headers = ['Employee ID', 'Name', 'Email', 'Mobile', 'Department', 'Designation', 'Age', 'Gender', 'Blood Group', 'Registered At'];
-    const data = employees.map(emp => [
+    const headers = ['Employee ID', 'Name', 'Company', 'Email', 'Mobile', 'Department', 'Designation', 'Age', 'Gender', 'Blood Group', 'Registered At'];
+    const data = filteredEmployees.map(emp => [
       emp.employeeId,
       emp.name,
+      emp.companyName || '-',
       emp.email,
       emp.mobile,
       emp.department || '-',
@@ -76,7 +88,7 @@ export default function Employees() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `employees-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `employees-${dateRange.label.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
@@ -88,6 +100,7 @@ export default function Employees() {
           <p className="text-muted-foreground">Register and search corporate employees</p>
         </div>
         <div className="flex gap-3">
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
           <Button onClick={exportToCSV} variant="outline" className="gap-2">
             <Download className="w-4 h-4" />
             Export
@@ -119,6 +132,15 @@ export default function Employees() {
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Enter full name"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <Label className="form-label">Company Name *</Label>
+                  <Input
+                    value={formData.companyName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+                    placeholder="e.g., Infosys Ltd"
                     required
                   />
                 </div>
@@ -204,23 +226,17 @@ export default function Employees() {
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar - No Filter Button */}
       <Card className="content-panel">
         <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by Employee ID, Name, Email or Mobile..."
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline" className="gap-2">
-              <Filter className="w-4 h-4" />
-              Filters
-            </Button>
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by Employee ID, Name, Email or Mobile..."
+              className="pl-10"
+            />
           </div>
         </CardContent>
       </Card>
@@ -239,6 +255,7 @@ export default function Employees() {
                 <TableRow>
                   <TableHead>Employee ID</TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead>Company</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Mobile</TableHead>
                   <TableHead>Department</TableHead>
@@ -250,6 +267,7 @@ export default function Employees() {
                   <TableRow key={employee.id}>
                     <TableCell className="font-medium">{employee.employeeId}</TableCell>
                     <TableCell>{employee.name}</TableCell>
+                    <TableCell>{employee.companyName || '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{employee.email}</TableCell>
                     <TableCell>{employee.mobile}</TableCell>
                     <TableCell>{employee.department || '-'}</TableCell>
@@ -260,8 +278,8 @@ export default function Employees() {
                 ))}
                 {filteredEmployees.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      {searchQuery ? 'No employees found matching your search' : 'No employees registered yet'}
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      {searchQuery ? 'No employees found matching your search' : 'No employees registered in this period'}
                     </TableCell>
                   </TableRow>
                 )}
