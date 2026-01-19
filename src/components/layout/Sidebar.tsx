@@ -51,13 +51,14 @@ export function Sidebar() {
     )}>
       {/* Header */}
       <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center justify-center">
-          {!collapsed ? (
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Stethoscope className="w-5 h-5 text-primary" />
+          </div>
+          {!collapsed && (
             <h1 className="text-sidebar-foreground font-bold text-lg">
               Medical Room
             </h1>
-          ) : (
-            <span className="text-sidebar-foreground font-bold text-lg">MR</span>
           )}
         </div>
       </div>
