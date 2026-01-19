@@ -60,22 +60,111 @@ export default function Dashboard() {
   ];
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Employee', 'Type', 'Complaint', 'Doctor'];
-    const data = filteredWalkIns.map(w => [
-      new Date(w.createdAt).toLocaleDateString(),
-      w.employeeName,
-      w.consultationType,
-      w.chiefComplaint,
-      w.doctorName || '-'
-    ]);
+    const escapeCSV = (value: string | number | undefined) => {
+      if (value === undefined || value === null) return '-';
+      const str = String(value);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const lines: string[] = [];
     
-    const csv = [headers, ...data].map(row => row.join(',')).join('\n');
+    // Report Header
+    lines.push(`CLINIC DASHBOARD REPORT`);
+    lines.push(`Date Range: ${dateRange.label}`);
+    lines.push(`Generated: ${new Date().toLocaleString()}`);
+    lines.push('');
+    
+    // Summary Section
+    lines.push('=== SUMMARY ===');
+    lines.push(`Total Walk-ins,${filteredWalkIns.length}`);
+    lines.push(`Total Registrations,${employees.length} (${filteredEmployees.length} in period)`);
+    lines.push(`Medicines Dispensed,${medicinesDispensed}`);
+    lines.push(`Emergencies,${filteredEmergencies.length}`);
+    lines.push('');
+    
+    // Walk-ins Section
+    lines.push('=== WALK-INS ===');
+    lines.push('Date,Employee ID,Employee Name,Consultation Type,Chief Complaint,Diagnosis,Doctor,BP,Pulse,Temperature,SpO2');
+    filteredWalkIns.forEach(w => {
+      lines.push([
+        escapeCSV(new Date(w.createdAt).toLocaleDateString()),
+        escapeCSV(w.employeeId),
+        escapeCSV(w.employeeName),
+        escapeCSV(w.consultationType),
+        escapeCSV(w.chiefComplaint),
+        escapeCSV(w.diagnosis),
+        escapeCSV(w.doctorName),
+        escapeCSV(w.vitals?.bp),
+        escapeCSV(w.vitals?.pulse),
+        escapeCSV(w.vitals?.temperature),
+        escapeCSV(w.vitals?.spo2)
+      ].join(','));
+    });
+    lines.push('');
+    
+    // Registrations Section
+    lines.push('=== EMPLOYEE REGISTRATIONS ===');
+    lines.push('Registration Date,Employee ID,Name,Email,Mobile,Department,Designation,Age,Gender,Blood Group');
+    filteredEmployees.forEach(e => {
+      lines.push([
+        escapeCSV(new Date(e.registeredAt).toLocaleDateString()),
+        escapeCSV(e.employeeId),
+        escapeCSV(e.name),
+        escapeCSV(e.email),
+        escapeCSV(e.mobile),
+        escapeCSV(e.department),
+        escapeCSV(e.designation),
+        escapeCSV(e.age),
+        escapeCSV(e.gender),
+        escapeCSV(e.bloodGroup)
+      ].join(','));
+    });
+    lines.push('');
+    
+    // Medicines Dispensed Section
+    lines.push('=== MEDICINES DISPENSED ===');
+    lines.push('Date,Employee Name,Medicine Name,Quantity,Dosage');
+    filteredWalkIns.forEach(w => {
+      w.medicinesDispensed?.forEach(m => {
+        lines.push([
+          escapeCSV(new Date(w.createdAt).toLocaleDateString()),
+          escapeCSV(w.employeeName),
+          escapeCSV(m.medicineName),
+          escapeCSV(m.quantity),
+          escapeCSV(m.dosage)
+        ].join(','));
+      });
+    });
+    lines.push('');
+    
+    // Emergencies Section
+    lines.push('=== EMERGENCIES ===');
+    lines.push('Date,Employee ID,Employee Name,Incident Type,Severity,Description,Action Taken,Ambulance Used,Outcome');
+    filteredEmergencies.forEach(e => {
+      lines.push([
+        escapeCSV(new Date(e.createdAt).toLocaleDateString()),
+        escapeCSV(e.employeeId),
+        escapeCSV(e.employeeName),
+        escapeCSV(e.incidentType),
+        escapeCSV(e.severity),
+        escapeCSV(e.description),
+        escapeCSV(e.actionTaken),
+        escapeCSV(e.ambulanceUsed ? 'Yes' : 'No'),
+        escapeCSV(e.outcome)
+      ].join(','));
+    });
+    
+    const csv = lines.join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `clinic-report-${dateRange.label.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
