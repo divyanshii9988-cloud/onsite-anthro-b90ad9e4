@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import truworthLogo from '@/assets/truworth-logo.jpeg';
+
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -49,18 +49,15 @@ export function Sidebar() {
       "h-screen gradient-sidebar flex flex-col transition-all duration-300 sticky top-0",
       collapsed ? "w-20" : "w-64"
     )}>
-      {/* Logo */}
+      {/* Header */}
       <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <img 
-            src={truworthLogo} 
-            alt="Truworth Wellness" 
-            className="h-10 w-auto object-contain bg-white rounded p-1"
-          />
-          {!collapsed && (
-            <span className="text-sidebar-foreground font-semibold text-sm">
-              Onsite Clinic
-            </span>
+        <div className="flex items-center justify-center">
+          {!collapsed ? (
+            <h1 className="text-sidebar-foreground font-bold text-lg">
+              Medical Room
+            </h1>
+          ) : (
+            <span className="text-sidebar-foreground font-bold text-lg">MR</span>
           )}
         </div>
       </div>
