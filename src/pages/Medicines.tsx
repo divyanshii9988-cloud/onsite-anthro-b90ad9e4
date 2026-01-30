@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 
 export default function Medicines() {
   const { walkIns, employees, medicines, dispenseMedicine } = useData();
-  const { location } = useAuth();
+  const { selectedCorporate } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Get all dispensed medicines from walk-ins

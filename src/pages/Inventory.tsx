@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 
 export default function Inventory() {
   const { medicines, addMedicine, updateMedicineStock } = useData();
-  const { location } = useAuth();
+  const { selectedCorporate } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
@@ -56,7 +56,7 @@ export default function Inventory() {
       unit: formData.unit,
       minStock: parseInt(formData.minStock) || 10,
       expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
-      locationId: location?.id || '',
+      locationId: selectedCorporate?.id || '',
     });
 
     toast.success('Medicine added successfully!');

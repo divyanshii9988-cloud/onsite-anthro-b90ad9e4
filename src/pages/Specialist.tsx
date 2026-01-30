@@ -15,7 +15,7 @@ import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } fr
 
 export default function Specialist() {
   const { specialistConsultations, addSpecialistConsultation, employees } = useData();
-  const { location } = useAuth();
+  const { selectedCorporate } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
@@ -27,7 +27,7 @@ export default function Specialist() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEmployee || !formData.speciality || !formData.specialistName || !formData.appointmentDate) { toast.error('Please fill in all required fields'); return; }
-    addSpecialistConsultation({ employeeId: selectedEmployee, employeeName: selectedEmp?.name || '', speciality: formData.speciality, specialistName: formData.specialistName, hospitalName: formData.hospitalName || undefined, appointmentDate: new Date(formData.appointmentDate), referralReason: formData.referralReason, status: 'scheduled', notes: formData.notes || undefined, locationId: location?.id || '' });
+    addSpecialistConsultation({ employeeId: selectedEmployee, employeeName: selectedEmp?.name || '', speciality: formData.speciality, specialistName: formData.specialistName, hospitalName: formData.hospitalName || undefined, appointmentDate: new Date(formData.appointmentDate), referralReason: formData.referralReason, status: 'scheduled', notes: formData.notes || undefined, locationId: selectedCorporate?.id || '' });
     toast.success('Specialist consultation scheduled successfully!');
     setIsDialogOpen(false);
     setSelectedEmployee('');

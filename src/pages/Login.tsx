@@ -6,20 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, EyeOff, Loader2, MapPin } from 'lucide-react';
-import truworthLogo from '@/assets/truworth-logo.jpeg';
-
-const locations = [
-  { id: 'loc1', name: 'Bangalore', clientName: 'Infosys Ltd' },
-  { id: 'loc2', name: 'Mumbai', clientName: 'Tata Consultancy Services' },
-  { id: 'loc3', name: 'Hyderabad', clientName: 'Wipro Technologies' },
-];
+import { Eye, EyeOff, Loader2, Stethoscope } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,16 +21,10 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!selectedLocation) {
-      setError('Please select a location');
-      return;
-    }
-    
     setIsLoading(true);
     
     try {
-      const success = await login(email, password, selectedLocation);
+      const success = await login(email, password);
       if (success) {
         navigate('/dashboard');
       } else {
@@ -58,11 +43,7 @@ export default function Login() {
       <div className="hidden lg:flex lg:w-1/2 gradient-primary items-center justify-center p-12">
         <div className="max-w-md text-center">
           <div className="mb-8 inline-block bg-white rounded-xl p-4 shadow-lg">
-            <img 
-              src={truworthLogo} 
-              alt="Truworth Wellness" 
-              className="h-16 w-auto"
-            />
+            <Stethoscope className="h-16 w-16 text-primary" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-4">
             Onsite Clinic Management Tool
@@ -93,11 +74,7 @@ export default function Login() {
         <Card className="w-full max-w-md shadow-xl border-0">
           <CardHeader className="text-center pb-2">
             <div className="lg:hidden mb-4">
-              <img 
-                src={truworthLogo} 
-                alt="Truworth Wellness" 
-                className="h-12 w-auto mx-auto"
-              />
+              <Stethoscope className="h-12 w-12 text-primary mx-auto" />
             </div>
             <CardTitle className="text-2xl font-bold text-foreground">
               Welcome Back
@@ -114,28 +91,6 @@ export default function Login() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-
-              {/* Location Selection */}
-              <div className="form-group">
-                <Label htmlFor="location" className="form-label">
-                  Select Location
-                </Label>
-                <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                  <SelectTrigger className="h-11">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-muted-foreground" />
-                      <SelectValue placeholder="Choose your clinic location" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               
               <div className="form-group">
                 <Label htmlFor="email" className="form-label">

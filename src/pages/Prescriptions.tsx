@@ -15,7 +15,7 @@ import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } fr
 
 export default function Prescriptions() {
   const { prescriptions, addPrescription, employees } = useData();
-  const { location, user } = useAuth();
+  const { selectedCorporate, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
@@ -30,7 +30,7 @@ export default function Prescriptions() {
     const medicineLines = formData.medicines.split('\n').filter(line => line.trim());
     const parsedMedicines = medicineLines.map(line => { const parts = line.split('-').map(p => p.trim()); return { name: parts[0] || line, dosage: parts[1] || '', duration: parts[2] || '', instructions: parts[3] || '' }; });
     const sentTo = formData.sentVia === 'sms' || formData.sentVia === 'both' ? selectedEmp?.mobile : selectedEmp?.email;
-    addPrescription({ walkInId: '', employeeId: selectedEmployee, employeeName: selectedEmp?.name || '', doctorName: user?.name || 'Doctor', medicines: parsedMedicines, diagnosis: formData.diagnosis, advice: formData.advice || undefined, sentVia: formData.sentVia, sentTo: sentTo || '', locationId: location?.id || '' });
+    addPrescription({ walkInId: '', employeeId: selectedEmployee, employeeName: selectedEmp?.name || '', doctorName: user?.name || 'Doctor', medicines: parsedMedicines, diagnosis: formData.diagnosis, advice: formData.advice || undefined, sentVia: formData.sentVia, sentTo: sentTo || '', locationId: selectedCorporate?.id || '' });
     toast.success(`Digital prescription sent via ${formData.sentVia}!`);
     setIsDialogOpen(false);
     setSelectedEmployee('');
