@@ -13,7 +13,6 @@ import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import WalkIns from "./pages/WalkIns";
 import Medicines from "./pages/Medicines";
-import Emergencies from "./pages/Emergencies";
 import Inventory from "./pages/Inventory";
 import BioWaste from "./pages/BioWaste";
 import Ambulance from "./pages/Ambulance";
@@ -53,7 +52,6 @@ function AppRoutes() {
       <Route path="/employees" element={<ProtectedRoute><Employees /></ProtectedRoute>} />
       <Route path="/walk-ins" element={<ProtectedRoute><WalkIns /></ProtectedRoute>} />
       <Route path="/medicines" element={<ProtectedRoute><Medicines /></ProtectedRoute>} />
-      <Route path="/emergencies" element={<ProtectedRoute><Emergencies /></ProtectedRoute>} />
       <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
       <Route path="/biowaste" element={<ProtectedRoute><BioWaste /></ProtectedRoute>} />
       <Route path="/ambulance" element={<ProtectedRoute><Ambulance /></ProtectedRoute>} />

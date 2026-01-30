@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Eye, Trash2, ArrowLeft } from 'lucide-react';
+import { Plus, Search, Eye, Trash2, ArrowLeft, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,60 +8,45 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-
-interface AdminUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  mobile: string;
-  role: 'ADMIN' | 'DOCTOR' | 'NURSE';
-  isSuperAdmin: boolean;
-  createdAt: Date;
-}
-
-// Mock data for admin users
-const initialAdminUsers: AdminUser[] = [
-  { id: '1', firstName: 'Divyanshi', lastName: 'Sharma', email: 'divyanshi.sharma@truworthwellness.com', mobile: '8890607809', role: 'ADMIN', isSuperAdmin: true, createdAt: new Date('2026-01-16T12:26:00') },
-  { id: '2', firstName: 'Sakshi', lastName: 'Mittal', email: 'sakshi.mittal@truworthwellness.com', mobile: '9876543210', role: 'NURSE', isSuperAdmin: false, createdAt: new Date('2025-12-05T14:46:00') },
-  { id: '3', firstName: 'Kshitij', lastName: 'Ganare', email: 'kshitij.ganare@truworthwellness.com', mobile: '9123456789', role: 'ADMIN', isSuperAdmin: false, createdAt: new Date('2025-11-19T17:56:00') },
-  { id: '4', firstName: 'Saumya', lastName: 'Lohan', email: 'saumya.lohani@truworthwellness.com', mobile: '9988776655', role: 'NURSE', isSuperAdmin: false, createdAt: new Date('2025-11-18T17:16:00') },
-  { id: '5', firstName: 'Devendra', lastName: 'Singh', email: 'devendra.s@truworthwellness.com', mobile: '8877665544', role: 'ADMIN', isSuperAdmin: true, createdAt: new Date('2025-11-04T15:42:00') },
-  { id: '6', firstName: 'Vishakha', lastName: 'Maheshwari', email: 'vishakha.maheshwari@truworthwellness.com', mobile: '7766554433', role: 'NURSE', isSuperAdmin: false, createdAt: new Date('2025-10-06T16:42:00') },
-  { id: '7', firstName: 'Tarun', lastName: 'Kumar', email: 'jaishree.kaushal@truworthwellness.com', mobile: '6655443322', role: 'ADMIN', isSuperAdmin: false, createdAt: new Date('2025-09-23T13:05:00') },
-  { id: '8', firstName: 'Khushboo', lastName: 'Goyal', email: 'khushboo.goyal@truworthwellness.com', mobile: '5544332211', role: 'ADMIN', isSuperAdmin: false, createdAt: new Date('2025-09-11T17:44:00') },
-  { id: '9', firstName: 'Shubham', lastName: 'Singh', email: 'shubham.singh@truworthwellness.com', mobile: '4433221100', role: 'ADMIN', isSuperAdmin: false, createdAt: new Date('2025-08-12T12:30:00') },
-];
+import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState<AdminUser[]>(initialAdminUsers);
+  const { adminUsers, addAdminUser, updateAdminUser, deleteAdminUser, corporates } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
+    password: '',
     mobile: '',
     role: '' as 'ADMIN' | 'DOCTOR' | 'NURSE' | '',
     isSuperAdmin: false,
+    assignedCorporates: [] as string[],
   });
 
-  const filteredUsers = users.filter(user => 
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredUsers = adminUsers.filter(user => 
+    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const selectedUser = selectedUserId ? adminUsers.find(u => u.id === selectedUserId) : null;
 
   const resetForm = () => {
     setFormData({
       firstName: '',
       lastName: '',
       email: '',
+      password: '',
       mobile: '',
       role: '',
       isSuperAdmin: false,
+      assignedCorporates: [],
     });
   };
 
@@ -70,23 +55,37 @@ export default function AdminUsers() {
     setViewMode('create');
   };
 
-  const handleEdit = (user: AdminUser) => {
-    setSelectedUser(user);
-    setFormData({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      mobile: user.mobile,
-      role: user.role,
-      isSuperAdmin: user.isSuperAdmin,
-    });
-    setViewMode('edit');
+  const handleEdit = (userId: string) => {
+    const user = adminUsers.find(u => u.id === userId);
+    if (user) {
+      setSelectedUserId(userId);
+      setFormData({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        password: '', // Don't show existing password
+        mobile: user.mobile,
+        role: user.role,
+        isSuperAdmin: user.isSuperAdmin,
+        assignedCorporates: user.assignedCorporates,
+      });
+      setViewMode('edit');
+    }
   };
 
   const handleBack = () => {
     setViewMode('list');
-    setSelectedUser(null);
+    setSelectedUserId(null);
     resetForm();
+  };
+
+  const handleCorporateToggle = (corporateId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      assignedCorporates: prev.assignedCorporates.includes(corporateId)
+        ? prev.assignedCorporates.filter(id => id !== corporateId)
+        : [...prev.assignedCorporates, corporateId]
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -97,25 +96,44 @@ export default function AdminUsers() {
       return;
     }
 
+    if (viewMode === 'create' && !formData.password) {
+      toast.error('Password is required for new users');
+      return;
+    }
+
+    if (formData.role !== 'ADMIN' && formData.assignedCorporates.length === 0) {
+      toast.error('Please assign at least one corporate for non-admin users');
+      return;
+    }
+
     if (viewMode === 'create') {
-      const newUser: AdminUser = {
-        id: Date.now().toString(),
+      addAdminUser({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
+        password: formData.password,
         mobile: formData.mobile,
         role: formData.role as 'ADMIN' | 'DOCTOR' | 'NURSE',
         isSuperAdmin: formData.isSuperAdmin,
-        createdAt: new Date(),
+        assignedCorporates: formData.role === 'ADMIN' ? [] : formData.assignedCorporates,
+      });
+      toast.success('User created successfully!');
+    } else if (viewMode === 'edit' && selectedUserId) {
+      const updates: any = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        mobile: formData.mobile,
+        role: formData.role as 'ADMIN' | 'DOCTOR' | 'NURSE',
+        isSuperAdmin: formData.isSuperAdmin,
+        assignedCorporates: formData.role === 'ADMIN' ? [] : formData.assignedCorporates,
       };
-      setUsers(prev => [newUser, ...prev]);
-      toast.success('Admin user created successfully!');
-    } else if (viewMode === 'edit' && selectedUser) {
-      setUsers(prev => prev.map(u => 
-        u.id === selectedUser.id 
-          ? { ...u, ...formData, role: formData.role as 'ADMIN' | 'DOCTOR' | 'NURSE' }
-          : u
-      ));
+      
+      // Only update password if provided
+      if (formData.password) {
+        updates.password = formData.password;
+      }
+      
+      updateAdminUser(selectedUserId, updates);
       toast.success('User updated successfully!');
     }
 
@@ -123,12 +141,12 @@ export default function AdminUsers() {
   };
 
   const handleDelete = (userId: string) => {
-    const user = users.find(u => u.id === userId);
+    const user = adminUsers.find(u => u.id === userId);
     if (user?.isSuperAdmin) {
       toast.error('Cannot delete a Super Admin user');
       return;
     }
-    setUsers(prev => prev.filter(u => u.id !== userId));
+    deleteAdminUser(userId);
     toast.success('User deleted successfully');
   };
 
@@ -137,8 +155,14 @@ export default function AdminUsers() {
   };
 
   const getRoleDisplay = (role: string) => {
-    if (role === 'NURSE') return 'EXECUTIVE';
     return role;
+  };
+
+  const getCorporateNames = (corporateIds: string[]) => {
+    return corporateIds
+      .map(id => corporates.find(c => c.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
   };
 
   // List View
@@ -147,13 +171,13 @@ export default function AdminUsers() {
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">All Admin Users</h1>
+          <h1 className="text-2xl font-bold text-foreground">Manage Users</h1>
           <div className="flex items-center gap-3">
             <div className="flex gap-2">
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by Email-Id"
+                placeholder="Search by name or email"
                 className="w-64"
               />
               <Button variant="default" size="icon">
@@ -161,7 +185,8 @@ export default function AdminUsers() {
               </Button>
             </div>
             <Button onClick={handleCreate} className="gap-2">
-              Create Admin User
+              <Plus className="w-4 h-4" />
+              Create User
             </Button>
           </div>
         </div>
@@ -175,6 +200,7 @@ export default function AdminUsers() {
                 <TableHead className="font-semibold">Name</TableHead>
                 <TableHead className="font-semibold">Email</TableHead>
                 <TableHead className="font-semibold">Role</TableHead>
+                <TableHead className="font-semibold">Assigned Corporates</TableHead>
                 <TableHead className="font-semibold">Date</TableHead>
                 <TableHead className="text-center font-semibold">Actions</TableHead>
               </TableRow>
@@ -184,7 +210,12 @@ export default function AdminUsers() {
                 <TableRow key={user.id} className="hover:bg-muted/30">
                   <TableCell className="font-medium">{index + 1}</TableCell>
                   <TableCell className="font-medium">
-                    {user.firstName} {user.lastName}
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-8 h-8">
+                        <AvatarFallback className="text-xs">{getInitials(user.firstName, user.lastName)}</AvatarFallback>
+                      </Avatar>
+                      {user.firstName} {user.lastName}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -197,19 +228,38 @@ export default function AdminUsers() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium text-muted-foreground">
+                    <Badge variant="secondary" className="font-medium">
                       {getRoleDisplay(user.role)}
-                    </span>
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="max-w-xs">
+                    {user.role === 'ADMIN' ? (
+                      <span className="text-muted-foreground text-sm">All Corporates</span>
+                    ) : user.assignedCorporates.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {user.assignedCorporates.slice(0, 2).map(id => {
+                          const corp = corporates.find(c => c.id === id);
+                          return corp ? (
+                            <Badge key={id} variant="outline" className="text-xs">
+                              {corp.name}
+                            </Badge>
+                          ) : null;
+                        })}
+                        {user.assignedCorporates.length > 2 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{user.assignedCorporates.length - 2} more
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-warning text-sm">No corporates assigned</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(user.createdAt).toLocaleDateString('en-IN', {
                       day: '2-digit',
                       month: 'short',
                       year: '2-digit',
-                    })} at {new Date(user.createdAt).toLocaleTimeString('en-IN', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true,
                     })}
                   </TableCell>
                   <TableCell>
@@ -218,7 +268,7 @@ export default function AdminUsers() {
                         variant="ghost" 
                         size="icon" 
                         title="View/Edit"
-                        onClick={() => handleEdit(user)}
+                        onClick={() => handleEdit(user.id)}
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -237,7 +287,7 @@ export default function AdminUsers() {
               ))}
               {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -267,29 +317,31 @@ export default function AdminUsers() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
           {/* First Name */}
           <div className="flex items-center gap-4">
-            <Label className="w-32 text-right text-muted-foreground shrink-0">First Name :</Label>
+            <Label className="w-32 text-right text-muted-foreground shrink-0">First Name *</Label>
             <Input
               value={formData.firstName}
               onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
               placeholder="Enter first name"
               className="flex-1"
+              required
             />
           </div>
 
           {/* Last Name */}
           <div className="flex items-center gap-4">
-            <Label className="w-32 text-right text-muted-foreground shrink-0">Last Name :</Label>
+            <Label className="w-32 text-right text-muted-foreground shrink-0">Last Name *</Label>
             <Input
               value={formData.lastName}
               onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
               placeholder="Enter last name"
               className="flex-1"
+              required
             />
           </div>
 
           {/* Email ID */}
           <div className="flex items-center gap-4">
-            <Label className="w-32 text-right text-muted-foreground shrink-0">Email ID :</Label>
+            <Label className="w-32 text-right text-muted-foreground shrink-0">Email ID *</Label>
             <Input
               type="email"
               value={formData.email}
@@ -297,12 +349,28 @@ export default function AdminUsers() {
               placeholder="email@truworthwellness.com"
               className="flex-1"
               disabled={viewMode === 'edit'}
+              required
+            />
+          </div>
+
+          {/* Password */}
+          <div className="flex items-center gap-4">
+            <Label className="w-32 text-right text-muted-foreground shrink-0">
+              Password {viewMode === 'create' ? '*' : ''}
+            </Label>
+            <Input
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+              placeholder={viewMode === 'edit' ? 'Leave blank to keep current' : 'Enter password'}
+              className="flex-1"
+              required={viewMode === 'create'}
             />
           </div>
 
           {/* Mobile */}
           <div className="flex items-center gap-4">
-            <Label className="w-32 text-right text-muted-foreground shrink-0">Mobile :</Label>
+            <Label className="w-32 text-right text-muted-foreground shrink-0">Mobile</Label>
             <Input
               value={formData.mobile}
               onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
@@ -313,9 +381,7 @@ export default function AdminUsers() {
 
           {/* User Type */}
           <div className="flex items-center gap-4">
-            <Label className="w-32 text-right text-muted-foreground shrink-0">
-              <span className="text-destructive">*</span> User Type :
-            </Label>
+            <Label className="w-32 text-right text-muted-foreground shrink-0">User Type *</Label>
             <Select 
               value={formData.role} 
               onValueChange={(value: 'ADMIN' | 'DOCTOR' | 'NURSE') => setFormData(prev => ({ ...prev, role: value }))}
@@ -331,22 +397,14 @@ export default function AdminUsers() {
             </Select>
           </div>
 
-          {/* 2FA Required placeholder */}
-          <div className="flex items-center gap-4">
-            <Label className="w-32 text-right text-muted-foreground shrink-0">2FA Required :</Label>
-            <Switch disabled />
-          </div>
-
           {/* Is Super Admin */}
           <div className="flex items-center gap-4 col-span-1 md:col-span-2">
             <Label className="w-32 text-right text-muted-foreground shrink-0"></Label>
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="superAdmin"
                 checked={formData.isSuperAdmin}
-                onChange={(e) => setFormData(prev => ({ ...prev, isSuperAdmin: e.target.checked }))}
-                className="w-4 h-4 rounded border-input text-primary focus:ring-primary"
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isSuperAdmin: !!checked }))}
               />
               <Label htmlFor="superAdmin" className="text-sm cursor-pointer">Is Super Admin</Label>
             </div>
@@ -354,7 +412,7 @@ export default function AdminUsers() {
 
           {/* User Image */}
           <div className="flex items-center gap-4">
-            <Label className="w-32 text-right text-muted-foreground shrink-0">User Image :</Label>
+            <Label className="w-32 text-right text-muted-foreground shrink-0">User Image</Label>
             <Avatar className="w-16 h-16 bg-muted">
               <AvatarFallback className="text-lg font-medium">
                 {formData.firstName && formData.lastName 
@@ -363,25 +421,44 @@ export default function AdminUsers() {
               </AvatarFallback>
             </Avatar>
           </div>
-
-          {/* User Login Type placeholder */}
-          <div className="flex items-center gap-4">
-            <Label className="w-32 text-right text-muted-foreground shrink-0">User Login Type :</Label>
-            <Select defaultValue="password" disabled>
-              <SelectTrigger className="flex-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="password">Password</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
+
+        {/* Corporate Assignment Section - Only for non-admin users */}
+        {formData.role && formData.role !== 'ADMIN' && (
+          <div className="mt-8 pt-6 border-t">
+            <div className="flex items-center gap-2 mb-4">
+              <Building2 className="w-5 h-5 text-primary" />
+              <h3 className="font-semibold text-foreground">Assign Corporates</h3>
+              <span className="text-sm text-muted-foreground">(Select at least one)</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {corporates.map((corp) => (
+                <label
+                  key={corp.id}
+                  className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
+                    formData.assignedCorporates.includes(corp.id)
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:bg-muted/50'
+                  }`}
+                >
+                  <Checkbox
+                    checked={formData.assignedCorporates.includes(corp.id)}
+                    onCheckedChange={() => handleCorporateToggle(corp.id)}
+                  />
+                  <div>
+                    <p className="font-medium text-sm">{corp.name}</p>
+                    <p className="text-xs text-muted-foreground">{corp.location}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
           <Button type="submit">
-            {viewMode === 'create' ? 'Create' : 'Update'}
+            {viewMode === 'create' ? 'Create User' : 'Update User'}
           </Button>
           <Button type="button" variant="outline" onClick={handleBack}>
             Cancel

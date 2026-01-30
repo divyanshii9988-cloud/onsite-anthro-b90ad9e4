@@ -15,7 +15,7 @@ import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } fr
 
 export default function BioWaste() {
   const { bioWaste, addBioWaste } = useData();
-  const { location } = useAuth();
+  const { selectedCorporate } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
   const [formData, setFormData] = useState({ wasteType: '' as 'yellow' | 'red' | 'blue' | 'white' | 'black' | '', quantity: '', unit: 'kg' as 'kg' | 'bags', collectedBy: '', remarks: '' });
@@ -25,7 +25,7 @@ export default function BioWaste() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.wasteType || !formData.quantity || !formData.collectedBy) { toast.error('Please fill in all required fields'); return; }
-    addBioWaste({ wasteType: formData.wasteType as 'yellow' | 'red' | 'blue' | 'white' | 'black', quantity: parseFloat(formData.quantity), unit: formData.unit, collectedBy: formData.collectedBy, collectedAt: new Date(), remarks: formData.remarks || undefined, locationId: location?.id || '' });
+    addBioWaste({ wasteType: formData.wasteType as 'yellow' | 'red' | 'blue' | 'white' | 'black', quantity: parseFloat(formData.quantity), unit: formData.unit, collectedBy: formData.collectedBy, collectedAt: new Date(), remarks: formData.remarks || undefined, locationId: selectedCorporate?.id || '' });
     toast.success('Biomedical waste log added successfully!');
     setIsDialogOpen(false);
     setFormData({ wasteType: '', quantity: '', unit: 'kg', collectedBy: '', remarks: '' });

@@ -14,7 +14,7 @@ import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } fr
 
 export default function Ambulance() {
   const { ambulanceMovements, addAmbulanceMovement } = useData();
-  const { location } = useAuth();
+  const { selectedCorporate } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
   const [formData, setFormData] = useState({ vehicleNumber: '', driverName: '', driverContact: '', patientName: '', pickupLocation: '', dropLocation: '', remarks: '' });
@@ -24,7 +24,7 @@ export default function Ambulance() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.vehicleNumber || !formData.patientName || !formData.pickupLocation || !formData.dropLocation) { toast.error('Please fill in all required fields'); return; }
-    addAmbulanceMovement({ vehicleNumber: formData.vehicleNumber, driverName: formData.driverName, driverContact: formData.driverContact, patientName: formData.patientName, pickupLocation: formData.pickupLocation, dropLocation: formData.dropLocation, departureTime: new Date(), remarks: formData.remarks || undefined, locationId: location?.id || '' });
+    addAmbulanceMovement({ vehicleNumber: formData.vehicleNumber, driverName: formData.driverName, driverContact: formData.driverContact, patientName: formData.patientName, pickupLocation: formData.pickupLocation, dropLocation: formData.dropLocation, departureTime: new Date(), remarks: formData.remarks || undefined, locationId: selectedCorporate?.id || '' });
     toast.success('Ambulance movement logged successfully!');
     setIsDialogOpen(false);
     setFormData({ vehicleNumber: '', driverName: '', driverContact: '', patientName: '', pickupLocation: '', dropLocation: '', remarks: '' });

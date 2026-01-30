@@ -5,7 +5,6 @@ import {
   UserPlus, 
   Stethoscope, 
   Pill, 
-  AlertTriangle, 
   Package, 
   Trash2, 
   Truck, 
@@ -25,7 +24,6 @@ const navItems = [
   { path: '/employees', label: 'Employee Registration', icon: UserPlus },
   { path: '/walk-ins', label: 'Daily Walk-ins', icon: Stethoscope },
   { path: '/medicines', label: 'Medicine Dispensation', icon: Pill },
-  { path: '/emergencies', label: 'Emergency / Incidents', icon: AlertTriangle },
   { path: '/inventory', label: 'Medicine Inventory', icon: Package },
   { path: '/biowaste', label: 'Bio-Medical Waste', icon: Trash2 },
   { path: '/ambulance', label: 'Ambulance Movement', icon: Truck },
@@ -34,7 +32,7 @@ const navItems = [
 ];
 
 const adminItems = [
-  { path: '/admin-users', label: 'Admin Users', icon: Users },
+  { path: '/admin-users', label: 'Manage Users', icon: Users },
 ];
 
 export function Sidebar() {
@@ -127,7 +125,7 @@ export function Sidebar() {
         {!collapsed && user && (
           <div className="mb-3 px-3 py-2 rounded-lg bg-sidebar-accent">
             <p className="text-sm font-medium text-sidebar-foreground truncate">{user.name}</p>
-            <p className="text-xs text-sidebar-muted truncate">{user.locationName}</p>
+            <p className="text-xs text-sidebar-muted truncate capitalize">{user.role}</p>
           </div>
         )}
         

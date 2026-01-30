@@ -14,6 +14,7 @@ export interface Employee {
   bloodGroup?: string;
   registeredAt: Date;
   lastVisit?: Date;
+  corporateId?: string;
 }
 
 export interface WalkIn {
@@ -36,6 +37,17 @@ export interface WalkIn {
   followUpDate?: Date;
   createdAt: Date;
   locationId: string;
+  corporateId?: string;
+  isEmergency?: boolean;
+  // Emergency-specific fields
+  incidentType?: string;
+  severity?: 'minor' | 'moderate' | 'critical';
+  description?: string;
+  actionTaken?: string;
+  ambulanceUsed?: boolean;
+  ambulanceDetails?: string;
+  escalatedTo?: string;
+  outcome?: string;
 }
 
 export interface MedicineDispensed {
@@ -56,6 +68,7 @@ export interface Medicine {
   expiryDate?: Date;
   minStock: number;
   locationId: string;
+  corporateId?: string;
 }
 
 export interface Emergency {
@@ -72,6 +85,7 @@ export interface Emergency {
   outcome: string;
   createdAt: Date;
   locationId: string;
+  corporateId?: string;
 }
 
 export interface BiowWaste {
@@ -84,6 +98,7 @@ export interface BiowWaste {
   disposedAt?: Date;
   remarks?: string;
   locationId: string;
+  corporateId?: string;
 }
 
 export interface AmbulanceMovement {
@@ -99,6 +114,7 @@ export interface AmbulanceMovement {
   emergencyId?: string;
   remarks?: string;
   locationId: string;
+  corporateId?: string;
 }
 
 export interface SpecialistConsultation {
@@ -114,6 +130,7 @@ export interface SpecialistConsultation {
   notes?: string;
   locationId: string;
   createdAt: Date;
+  corporateId?: string;
 }
 
 export interface DigitalPrescription {
@@ -134,8 +151,19 @@ export interface DigitalPrescription {
   sentTo: string;
   sentAt: Date;
   locationId: string;
+  corporateId?: string;
 }
 
+export interface Corporate {
+  id: string;
+  name: string;
+  location: string; // City
+  address: string;
+  contactPerson?: string;
+  contactNumber?: string;
+}
+
+// Keep Location for backwards compatibility, but Corporate is the primary entity now
 export interface Location {
   id: string;
   name: string;
@@ -152,4 +180,19 @@ export interface User {
   role: 'doctor' | 'nurse' | 'admin';
   locationId: string;
   locationName: string;
+  assignedCorporates?: string[]; // IDs of assigned corporates
+  selectedCorporateId?: string; // Currently selected corporate
+}
+
+export interface AdminUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  mobile: string;
+  role: 'ADMIN' | 'DOCTOR' | 'NURSE';
+  isSuperAdmin: boolean;
+  assignedCorporates: string[];
+  createdAt: Date;
 }

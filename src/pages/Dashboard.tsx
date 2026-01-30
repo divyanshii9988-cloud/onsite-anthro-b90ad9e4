@@ -16,7 +16,7 @@ import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } fr
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
   const { employees, walkIns, emergencies } = useData();
-  const { location } = useAuth();
+  const { selectedCorporate } = useAuth();
   
   // Filter data by date range
   const filteredWalkIns = filterByDateRange(walkIns, dateRange, 'createdAt');
@@ -220,7 +220,7 @@ export default function Dashboard() {
             {[
               { label: 'New Walk-in', path: '/walk-ins', icon: Stethoscope },
               { label: 'Register Employee', path: '/employees', icon: Users },
-              { label: 'Log Emergency', path: '/emergencies', icon: AlertTriangle },
+              { label: 'Log Emergency', path: '/walk-ins', icon: AlertTriangle },
               { label: 'Add Medicine', path: '/inventory', icon: Pill },
               { label: 'Waste Log', path: '/biowaste', icon: Pill },
               { label: 'Prescription', path: '/prescriptions', icon: Pill },
