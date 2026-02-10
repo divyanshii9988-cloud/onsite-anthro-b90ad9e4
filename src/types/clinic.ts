@@ -48,6 +48,9 @@ export interface WalkIn {
   ambulanceDetails?: string;
   escalatedTo?: string;
   outcome?: string;
+  caseStatus?: 'open' | 'under_investigation' | 'closed';
+  closureDate?: Date;
+  closureRemarks?: string;
 }
 
 export interface MedicineDispensed {

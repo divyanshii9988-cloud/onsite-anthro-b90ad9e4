@@ -13,7 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Users
+  Users,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +30,7 @@ const navItems = [
   { path: '/ambulance', label: 'Ambulance Movement', icon: Truck },
   { path: '/specialist', label: 'Specialist Consultation', icon: UserCheck },
   { path: '/prescriptions', label: 'Digital Prescription', icon: FileText },
+  { path: '/employee-timeline', label: 'Medical Timeline', icon: Clock },
 ];
 
 const adminItems = [
