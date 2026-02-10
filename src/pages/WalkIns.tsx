@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Download, Search, Stethoscope, AlertTriangle } from 'lucide-react';
+import { Plus, Download, Search, Stethoscope, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -27,6 +29,7 @@ export default function WalkIns() {
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
   const [isEmergency, setIsEmergency] = useState(false);
   const [entryFilter, setEntryFilter] = useState<EntryFilter>('all');
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   
   // Walk-in form data
   const [formData, setFormData] = useState({
@@ -53,15 +56,18 @@ export default function WalkIns() {
     ambulanceDetails: '',
     escalatedTo: '',
     outcome: '',
+    caseStatus: 'open' as 'open' | 'under_investigation' | 'closed',
+    closureDate: '',
+    closureRemarks: '',
   });
 
   const incidentTypes = ['Cardiac Emergency', 'Breathing Difficulty', 'Fainting/Unconsciousness', 'Seizure', 'Severe Allergic Reaction', 'Workplace Injury', 'Fall', 'Burn', 'Electric Shock', 'Food Poisoning', 'Other'];
 
-  // Search employees by text input
+  // Search employees by employee ID primarily
   const matchingEmployees = employeeSearchQuery.length >= 2 
     ? employees.filter(e => 
-        e.name.toLowerCase().includes(employeeSearchQuery.toLowerCase()) ||
-        e.employeeId.toLowerCase().includes(employeeSearchQuery.toLowerCase())
+        e.employeeId.toLowerCase().includes(employeeSearchQuery.toLowerCase()) ||
+        e.name.toLowerCase().includes(employeeSearchQuery.toLowerCase())
       ).slice(0, 5)
     : [];
 
@@ -70,26 +76,35 @@ export default function WalkIns() {
   // Filter walk-ins by date range and search
   const dateFilteredWalkIns = filterByDateRange(walkIns, dateRange, 'createdAt');
   const filteredWalkIns = dateFilteredWalkIns.filter(w => {
-    // Apply entry type filter
     if (entryFilter === 'walkIns' && w.isEmergency) return false;
     if (entryFilter === 'emergencies' && !w.isEmergency) return false;
     
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
+      const emp = employees.find(e => e.id === w.employeeId);
       return w.employeeName.toLowerCase().includes(lowerQuery) || 
-             w.chiefComplaint.toLowerCase().includes(lowerQuery);
+             w.chiefComplaint.toLowerCase().includes(lowerQuery) ||
+             (emp?.employeeId.toLowerCase().includes(lowerQuery));
     }
     return true;
   });
 
-  // Count stats
   const walkInCount = dateFilteredWalkIns.filter(w => !w.isEmergency).length;
   const emergencyCount = dateFilteredWalkIns.filter(w => w.isEmergency).length;
 
   const handleSelectEmployee = (empId: string) => {
     const emp = employees.find(e => e.id === empId);
     setSelectedEmployee(empId);
-    setEmployeeSearchQuery(emp?.name || '');
+    setEmployeeSearchQuery(emp?.employeeId || '');
+  };
+
+  const toggleRow = (id: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -101,7 +116,6 @@ export default function WalkIns() {
     }
 
     if (isEmergency) {
-      // Emergency submission
       if (!emergencyData.incidentType || !emergencyData.description) {
         toast.error('Please fill in incident type and description');
         return;
@@ -124,11 +138,13 @@ export default function WalkIns() {
         ambulanceDetails: emergencyData.ambulanceDetails || undefined,
         escalatedTo: emergencyData.escalatedTo || undefined,
         outcome: emergencyData.outcome,
+        caseStatus: emergencyData.caseStatus,
+        closureDate: emergencyData.closureDate ? new Date(emergencyData.closureDate) : undefined,
+        closureRemarks: emergencyData.closureRemarks || undefined,
       });
 
       toast.success('Emergency incident logged successfully!');
     } else {
-      // Normal walk-in submission
       if (!formData.chiefComplaint) {
         toast.error('Please enter chief complaint');
         return;
@@ -179,24 +195,30 @@ export default function WalkIns() {
     });
     setEmergencyData({
       incidentType: '', severity: 'moderate', description: '', actionTaken: '',
-      ambulanceUsed: false, ambulanceDetails: '', escalatedTo: '', outcome: ''
+      ambulanceUsed: false, ambulanceDetails: '', escalatedTo: '', outcome: '',
+      caseStatus: 'open', closureDate: '', closureRemarks: '',
     });
   };
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Time', 'Employee', 'Type', 'Is Emergency', 'Complaint/Incident', 'Diagnosis/Description', 'Doctor/Nurse', 'Severity', 'Ambulance'];
-    const data = filteredWalkIns.map(w => [
-      new Date(w.createdAt).toLocaleDateString(),
-      new Date(w.createdAt).toLocaleTimeString(),
-      w.employeeName,
-      w.consultationType,
-      w.isEmergency ? 'Yes' : 'No',
-      w.isEmergency ? w.incidentType : w.chiefComplaint,
-      w.isEmergency ? w.description : (w.diagnosis || '-'),
-      w.doctorName || '-',
-      w.severity || '-',
-      w.ambulanceUsed ? 'Yes' : 'No'
-    ]);
+    const headers = ['Date', 'Time', 'Employee', 'Emp ID', 'Type', 'Is Emergency', 'Complaint/Incident', 'Diagnosis/Description', 'Doctor/Nurse', 'Severity', 'Case Status', 'Ambulance'];
+    const data = filteredWalkIns.map(w => {
+      const emp = employees.find(e => e.id === w.employeeId);
+      return [
+        new Date(w.createdAt).toLocaleDateString(),
+        new Date(w.createdAt).toLocaleTimeString(),
+        w.employeeName,
+        emp?.employeeId || '-',
+        w.consultationType,
+        w.isEmergency ? 'Yes' : 'No',
+        w.isEmergency ? w.incidentType : w.chiefComplaint,
+        w.isEmergency ? w.description : (w.diagnosis || '-'),
+        w.doctorName || '-',
+        w.severity || '-',
+        w.caseStatus || '-',
+        w.ambulanceUsed ? 'Yes' : 'No'
+      ];
+    });
     
     const csv = [headers, ...data].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -214,6 +236,11 @@ export default function WalkIns() {
       case 'minor': return 'bg-success/10 text-success';
       default: return 'bg-muted text-muted-foreground';
     }
+  };
+
+  const getEmpId = (employeeId: string) => {
+    const emp = employees.find(e => e.id === employeeId);
+    return emp?.employeeId || '-';
   };
 
   return (
@@ -256,16 +283,13 @@ export default function WalkIns() {
                     <p className="text-xs text-muted-foreground">Toggle on for emergency cases</p>
                   </div>
                 </div>
-                <Switch
-                  checked={isEmergency}
-                  onCheckedChange={setIsEmergency}
-                />
+                <Switch checked={isEmergency} onCheckedChange={setIsEmergency} />
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6 pt-4">
-                {/* Employee Selection */}
+                {/* Employee Selection - search by Employee ID */}
                 <div className="form-group">
-                  <Label className="form-label">Search Employee *</Label>
+                  <Label className="form-label">Search by Employee ID *</Label>
                   <div className="relative">
                     <Input
                       value={employeeSearchQuery}
@@ -273,7 +297,7 @@ export default function WalkIns() {
                         setEmployeeSearchQuery(e.target.value);
                         if (selectedEmployee) setSelectedEmployee('');
                       }}
-                      placeholder="Type employee name or ID to search..."
+                      placeholder="Type employee ID (e.g., INF001) or name..."
                     />
                     {matchingEmployees.length > 0 && !selectedEmployee && (
                       <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
@@ -284,8 +308,9 @@ export default function WalkIns() {
                             onClick={() => handleSelectEmployee(emp.id)}
                             className="w-full text-left px-3 py-2 hover:bg-muted transition-colors"
                           >
-                            <span className="font-medium">{emp.name}</span>
-                            <span className="text-muted-foreground ml-2">({emp.employeeId})</span>
+                            <span className="font-mono font-medium text-primary">{emp.employeeId}</span>
+                            <span className="text-foreground ml-2">- {emp.name}</span>
+                            <span className="text-muted-foreground ml-2 text-xs">{emp.department}</span>
                           </button>
                         ))}
                       </div>
@@ -293,7 +318,7 @@ export default function WalkIns() {
                   </div>
                   {selectedEmp && (
                     <p className="text-xs text-primary mt-1">
-                      Selected: {selectedEmp.name} ({selectedEmp.employeeId})
+                      Selected: {selectedEmp.employeeId} - {selectedEmp.name} ({selectedEmp.department})
                     </p>
                   )}
                 </div>
@@ -380,6 +405,44 @@ export default function WalkIns() {
                         />
                       </div>
                     </div>
+
+                    {/* Case Status Section */}
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium text-foreground mb-3">Case Status</h4>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="form-group">
+                          <Label className="form-label">Status</Label>
+                          <Select value={emergencyData.caseStatus} onValueChange={(value: 'open' | 'under_investigation' | 'closed') => setEmergencyData(prev => ({ ...prev, caseStatus: value }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="open">Open</SelectItem>
+                              <SelectItem value="under_investigation">Under Investigation</SelectItem>
+                              <SelectItem value="closed">Closed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {emergencyData.caseStatus === 'closed' && (
+                          <>
+                            <div className="form-group">
+                              <Label className="form-label">Closure Date</Label>
+                              <Input
+                                type="date"
+                                value={emergencyData.closureDate}
+                                onChange={(e) => setEmergencyData(prev => ({ ...prev, closureDate: e.target.value }))}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <Label className="form-label">Closure Remarks</Label>
+                              <Input
+                                value={emergencyData.closureRemarks}
+                                onChange={(e) => setEmergencyData(prev => ({ ...prev, closureRemarks: e.target.value }))}
+                                placeholder="Remarks on closure"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   /* Walk-in Form */
@@ -415,45 +478,23 @@ export default function WalkIns() {
                       <div className="grid grid-cols-5 gap-3">
                         <div className="form-group">
                           <Label className="form-label text-xs">BP (mmHg)</Label>
-                          <Input
-                            value={formData.bp}
-                            onChange={(e) => setFormData(prev => ({ ...prev, bp: e.target.value }))}
-                            placeholder="120/80"
-                          />
+                          <Input value={formData.bp} onChange={(e) => setFormData(prev => ({ ...prev, bp: e.target.value }))} placeholder="120/80" />
                         </div>
                         <div className="form-group">
                           <Label className="form-label text-xs">Pulse (bpm)</Label>
-                          <Input
-                            type="number"
-                            value={formData.pulse}
-                            onChange={(e) => setFormData(prev => ({ ...prev, pulse: e.target.value }))}
-                            placeholder="72"
-                          />
+                          <Input type="number" value={formData.pulse} onChange={(e) => setFormData(prev => ({ ...prev, pulse: e.target.value }))} placeholder="72" />
                         </div>
                         <div className="form-group">
                           <Label className="form-label text-xs">Temp (°F)</Label>
-                          <Input
-                            value={formData.temperature}
-                            onChange={(e) => setFormData(prev => ({ ...prev, temperature: e.target.value }))}
-                            placeholder="98.6"
-                          />
+                          <Input value={formData.temperature} onChange={(e) => setFormData(prev => ({ ...prev, temperature: e.target.value }))} placeholder="98.6" />
                         </div>
                         <div className="form-group">
                           <Label className="form-label text-xs">SpO2 (%)</Label>
-                          <Input
-                            type="number"
-                            value={formData.spo2}
-                            onChange={(e) => setFormData(prev => ({ ...prev, spo2: e.target.value }))}
-                            placeholder="98"
-                          />
+                          <Input type="number" value={formData.spo2} onChange={(e) => setFormData(prev => ({ ...prev, spo2: e.target.value }))} placeholder="98" />
                         </div>
                         <div className="form-group">
                           <Label className="form-label text-xs">Weight (kg)</Label>
-                          <Input
-                            value={formData.weight}
-                            onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
-                            placeholder="70"
-                          />
+                          <Input value={formData.weight} onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))} placeholder="70" />
                         </div>
                       </div>
                     </div>
@@ -462,11 +503,7 @@ export default function WalkIns() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="form-group">
                         <Label className="form-label">Diagnosis</Label>
-                        <Input
-                          value={formData.diagnosis}
-                          onChange={(e) => setFormData(prev => ({ ...prev, diagnosis: e.target.value }))}
-                          placeholder="e.g., Viral fever"
-                        />
+                        <Input value={formData.diagnosis} onChange={(e) => setFormData(prev => ({ ...prev, diagnosis: e.target.value }))} placeholder="e.g., Viral fever" />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="form-group">
@@ -475,41 +512,27 @@ export default function WalkIns() {
                             <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                             <SelectContent>
                               {medicines.map(med => (
-                                <SelectItem key={med.id} value={med.id}>
-                                  {med.name} ({med.quantity})
-                                </SelectItem>
+                                <SelectItem key={med.id} value={med.id}>{med.name} ({med.quantity})</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="form-group">
                           <Label className="form-label">Qty</Label>
-                          <Input
-                            type="number"
-                            value={formData.medicineQty}
-                            onChange={(e) => setFormData(prev => ({ ...prev, medicineQty: e.target.value }))}
-                            placeholder="10"
-                          />
+                          <Input type="number" value={formData.medicineQty} onChange={(e) => setFormData(prev => ({ ...prev, medicineQty: e.target.value }))} placeholder="10" />
                         </div>
                       </div>
                     </div>
 
                     <div className="form-group">
                       <Label className="form-label">Prescription Notes</Label>
-                      <Textarea
-                        value={formData.prescription}
-                        onChange={(e) => setFormData(prev => ({ ...prev, prescription: e.target.value }))}
-                        placeholder="Enter prescription details..."
-                        rows={3}
-                      />
+                      <Textarea value={formData.prescription} onChange={(e) => setFormData(prev => ({ ...prev, prescription: e.target.value }))} placeholder="Enter prescription details..." rows={3} />
                     </div>
                   </div>
                 )}
 
                 <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                   <Button type="submit" variant={isEmergency ? 'destructive' : 'default'}>
                     {isEmergency ? 'Log Emergency' : 'Save Walk-in'}
                   </Button>
@@ -529,37 +552,21 @@ export default function WalkIns() {
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by patient name or complaint..."
+                placeholder="Search by employee ID, name, or complaint..."
                 className="pl-10"
               />
             </div>
             
             {/* Entry Type Filter */}
             <div className="flex items-center gap-2">
-              <Button
-                variant={entryFilter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setEntryFilter('all')}
-              >
+              <Button variant={entryFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setEntryFilter('all')}>
                 All ({dateFilteredWalkIns.length})
               </Button>
-              <Button
-                variant={entryFilter === 'walkIns' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setEntryFilter('walkIns')}
-                className="gap-1"
-              >
-                <Stethoscope className="w-4 h-4" />
-                Walk-ins ({walkInCount})
+              <Button variant={entryFilter === 'walkIns' ? 'default' : 'outline'} size="sm" onClick={() => setEntryFilter('walkIns')} className="gap-1">
+                <Stethoscope className="w-4 h-4" /> Walk-ins ({walkInCount})
               </Button>
-              <Button
-                variant={entryFilter === 'emergencies' ? 'destructive' : 'outline'}
-                size="sm"
-                onClick={() => setEntryFilter('emergencies')}
-                className="gap-1"
-              >
-                <AlertTriangle className="w-4 h-4" />
-                Emergencies ({emergencyCount})
+              <Button variant={entryFilter === 'emergencies' ? 'destructive' : 'outline'} size="sm" onClick={() => setEntryFilter('emergencies')} className="gap-1">
+                <AlertTriangle className="w-4 h-4" /> Emergencies ({emergencyCount})
               </Button>
             </div>
           </div>
@@ -582,61 +589,118 @@ export default function WalkIns() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8"></TableHead>
                   <TableHead>Time</TableHead>
+                  <TableHead>Emp ID</TableHead>
                   <TableHead>Patient</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Complaint/Incident</TableHead>
-                  <TableHead>Details</TableHead>
+                  <TableHead>Vitals & Diagnosis</TableHead>
                   <TableHead>Attended By</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredWalkIns.map((entry) => (
-                  <TableRow key={entry.id} className={entry.isEmergency ? 'bg-destructive/5' : ''}>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(entry.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                    </TableCell>
-                    <TableCell className="font-medium">{entry.employeeName}</TableCell>
-                    <TableCell>
-                      {entry.isEmergency ? (
-                        <div className="flex items-center gap-1">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium capitalize ${getSeverityColor(entry.severity)}`}>
-                            {entry.severity}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                          entry.consultationType === 'doctor' 
-                            ? 'bg-primary/10 text-primary' 
-                            : 'bg-info/10 text-info'
-                        }`}>
-                          {entry.consultationType === 'doctor' ? 'Doctor' : 'Nurse'}
-                        </span>
+                {filteredWalkIns.map((entry) => {
+                  const isExpanded = expandedRows.has(entry.id);
+                  return (
+                    <>
+                      <TableRow 
+                        key={entry.id} 
+                        className={`cursor-pointer ${entry.isEmergency ? 'bg-destructive/5' : ''} hover:bg-muted/50`}
+                        onClick={() => toggleRow(entry.id)}
+                      >
+                        <TableCell className="px-2">
+                          {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                          {new Date(entry.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-primary">{getEmpId(entry.employeeId)}</TableCell>
+                        <TableCell className="font-medium">{entry.employeeName}</TableCell>
+                        <TableCell>
+                          {entry.isEmergency ? (
+                            <span className={`inline-block px-2 py-1 rounded text-xs font-medium capitalize ${getSeverityColor(entry.severity)}`}>
+                              {entry.severity}
+                            </span>
+                          ) : (
+                            <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                              entry.consultationType === 'doctor' ? 'bg-primary/10 text-primary' : 'bg-info/10 text-info'
+                            }`}>
+                              {entry.consultationType === 'doctor' ? 'Doctor' : 'Nurse'}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {entry.isEmergency && <AlertTriangle className="w-4 h-4 text-destructive" />}
+                            {entry.isEmergency ? entry.incidentType : entry.chiefComplaint}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {entry.isEmergency ? (
+                            <span className="truncate max-w-[200px] inline-block">{entry.description}</span>
+                          ) : (
+                            <span className="text-xs">
+                              {[
+                                entry.vitals?.bp && `BP: ${entry.vitals.bp}`,
+                                entry.vitals?.temperature && `T: ${entry.vitals.temperature}°`,
+                                entry.vitals?.spo2 && `SpO2: ${entry.vitals.spo2}%`,
+                              ].filter(Boolean).join(' | ')}
+                              {entry.diagnosis && ` • ${entry.diagnosis}`}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>{entry.doctorName || '-'}</TableCell>
+                      </TableRow>
+                      {/* Expanded detail row */}
+                      {isExpanded && (
+                        <TableRow key={`${entry.id}-detail`} className="bg-muted/30">
+                          <TableCell colSpan={8} className="p-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                              {entry.isEmergency ? (
+                                <>
+                                  <div><span className="text-muted-foreground">Incident Type:</span> <span className="font-medium">{entry.incidentType}</span></div>
+                                  <div><span className="text-muted-foreground">Severity:</span> <Badge className={`text-xs capitalize ${getSeverityColor(entry.severity)}`}>{entry.severity}</Badge></div>
+                                  <div><span className="text-muted-foreground">Description:</span> <span>{entry.description}</span></div>
+                                  {entry.actionTaken && <div><span className="text-muted-foreground">Action Taken:</span> <span>{entry.actionTaken}</span></div>}
+                                  <div><span className="text-muted-foreground">Ambulance:</span> <span>{entry.ambulanceUsed ? `Yes - ${entry.ambulanceDetails || ''}` : 'No'}</span></div>
+                                  {entry.escalatedTo && <div><span className="text-muted-foreground">Escalated To:</span> <span>{entry.escalatedTo}</span></div>}
+                                  {entry.outcome && <div><span className="text-muted-foreground">Outcome:</span> <span>{entry.outcome}</span></div>}
+                                  {entry.caseStatus && <div><span className="text-muted-foreground">Case Status:</span> <Badge variant="outline" className="text-xs capitalize">{entry.caseStatus.replace('_', ' ')}</Badge></div>}
+                                  {entry.closureDate && <div><span className="text-muted-foreground">Closure Date:</span> <span>{new Date(entry.closureDate).toLocaleDateString()}</span></div>}
+                                  {entry.closureRemarks && <div><span className="text-muted-foreground">Closure Remarks:</span> <span>{entry.closureRemarks}</span></div>}
+                                </>
+                              ) : (
+                                <>
+                                  <div><span className="text-muted-foreground">Consultation:</span> <span className="font-medium capitalize">{entry.consultationType}</span></div>
+                                  <div><span className="text-muted-foreground">Chief Complaint:</span> <span className="font-medium">{entry.chiefComplaint}</span></div>
+                                  {entry.diagnosis && <div><span className="text-muted-foreground">Diagnosis:</span> <span>{entry.diagnosis}</span></div>}
+                                  {entry.vitals?.bp && <div><span className="text-muted-foreground">Blood Pressure:</span> <span>{entry.vitals.bp} mmHg</span></div>}
+                                  {entry.vitals?.pulse && <div><span className="text-muted-foreground">Pulse:</span> <span>{entry.vitals.pulse} bpm</span></div>}
+                                  {entry.vitals?.temperature && <div><span className="text-muted-foreground">Temperature:</span> <span>{entry.vitals.temperature}°F</span></div>}
+                                  {entry.vitals?.spo2 && <div><span className="text-muted-foreground">SpO2:</span> <span>{entry.vitals.spo2}%</span></div>}
+                                  {entry.vitals?.weight && <div><span className="text-muted-foreground">Weight:</span> <span>{entry.vitals.weight} kg</span></div>}
+                                  {entry.medicinesDispensed && entry.medicinesDispensed.length > 0 && (
+                                    <div className="col-span-2 md:col-span-3">
+                                      <span className="text-muted-foreground">Medicines Dispensed:</span>{' '}
+                                      {entry.medicinesDispensed.map((med, i) => (
+                                        <Badge key={i} variant="secondary" className="text-xs mr-1">{med.medicineName} x{med.quantity}</Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {entry.prescription && <div className="col-span-2 md:col-span-3"><span className="text-muted-foreground">Prescription:</span> <span>{entry.prescription}</span></div>}
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {entry.isEmergency && <AlertTriangle className="w-4 h-4 text-destructive" />}
-                        {entry.isEmergency ? entry.incidentType : entry.chiefComplaint}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
-                      {entry.isEmergency ? (
-                        <span>{entry.description}</span>
-                      ) : (
-                        <span>
-                          {entry.vitals?.bp && `BP: ${entry.vitals.bp}`}
-                          {entry.vitals?.temperature && `, T: ${entry.vitals.temperature}°F`}
-                          {entry.diagnosis && ` • ${entry.diagnosis}`}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>{entry.doctorName || '-'}</TableCell>
-                  </TableRow>
-                ))}
+                    </>
+                  );
+                })}
                 {filteredWalkIns.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       {entryFilter === 'emergencies' 
                         ? 'No emergencies logged - that\'s good!'
                         : 'No entries recorded in this period'}
