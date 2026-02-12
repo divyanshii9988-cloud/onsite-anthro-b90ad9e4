@@ -14,7 +14,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -22,7 +22,7 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-    
+
     try {
       const success = await login(email, password);
       if (success) {
@@ -53,12 +53,9 @@ export default function Login() {
           </p>
           <div className="mt-8 grid grid-cols-2 gap-4 text-left">
             {[
-              'Employee Registration',
-              'Walk-in Tracking',
-              'Medicine Inventory',
-              'Emergency Management',
-              'Biomedical Waste Logs',
-              'Digital Prescriptions',
+              'Employee Registration', 'Walk-in Tracking',
+              'Medicine Inventory', 'Emergency Management',
+              'Biomedical Waste Logs', 'Digital Prescriptions',
             ].map((feature) => (
               <div key={feature} className="flex items-center gap-2 text-white/90">
                 <div className="w-2 h-2 rounded-full bg-white/60" />
@@ -76,14 +73,12 @@ export default function Login() {
             <div className="lg:hidden mb-4">
               <Stethoscope className="h-12 w-12 text-primary mx-auto" />
             </div>
-            <CardTitle className="text-2xl font-bold text-foreground">
-              Welcome Back
-            </CardTitle>
+            <CardTitle className="text-2xl font-bold text-foreground">Welcome Back</CardTitle>
             <CardDescription className="text-muted-foreground">
               Sign in to access your clinic dashboard
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
@@ -91,35 +86,26 @@ export default function Login() {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              
+
               <div className="form-group">
-                <Label htmlFor="email" className="form-label">
-                  Email Address
-                </Label>
+                <Label htmlFor="email" className="form-label">Email Address</Label>
                 <Input
-                  id="email"
-                  type="email"
+                  id="email" type="email"
                   placeholder="you@company.truworth.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="h-11"
+                  value={email} onChange={(e) => setEmail(e.target.value)}
+                  required className="h-11"
                 />
               </div>
-              
+
               <div className="form-group">
-                <Label htmlFor="password" className="form-label">
-                  Password
-                </Label>
+                <Label htmlFor="password" className="form-label">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-11 pr-10"
+                    value={password} onChange={(e) => setPassword(e.target.value)}
+                    required className="h-11 pr-10"
                   />
                   <button
                     type="button"
@@ -130,30 +116,20 @@ export default function Login() {
                   </button>
                 </div>
               </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full h-11 text-base font-medium"
-                disabled={isLoading}
-              >
+
+              <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isLoading}>
                 {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Signing in...
-                  </>
-                ) : (
-                  'Sign In'
-                )}
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Signing in...</>
+                ) : 'Sign In'}
               </Button>
             </form>
-            
-            {/* Demo credentials */}
+
+            {/* Default admin info */}
             <div className="mt-6 p-4 bg-secondary/50 rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Demo Credentials:</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Default Admin (first-time setup):</p>
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p><strong>Doctor:</strong> doctor@truworth.com / demo123</p>
-                <p><strong>Nurse:</strong> nurse@truworth.com / demo123</p>
                 <p><strong>Admin:</strong> admin@truworth.com / admin123</p>
+                <p className="text-xs mt-2 italic">After login, create Doctor & Nurse accounts from Manage Users.</p>
               </div>
             </div>
           </CardContent>
