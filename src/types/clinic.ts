@@ -39,7 +39,6 @@ export interface WalkIn {
   locationId: string;
   corporateId?: string;
   isEmergency?: boolean;
-  // Emergency-specific fields
   incidentType?: string;
   severity?: 'minor' | 'moderate' | 'critical';
   description?: string;
@@ -160,13 +159,12 @@ export interface DigitalPrescription {
 export interface Corporate {
   id: string;
   name: string;
-  location: string; // City
+  location: string;
   address: string;
   contactPerson?: string;
   contactNumber?: string;
 }
 
-// Keep Location for backwards compatibility, but Corporate is the primary entity now
 export interface Location {
   id: string;
   name: string;
@@ -183,8 +181,8 @@ export interface User {
   role: 'doctor' | 'nurse' | 'admin';
   locationId: string;
   locationName: string;
-  assignedCorporates?: string[]; // IDs of assigned corporates
-  selectedCorporateId?: string; // Currently selected corporate
+  assignedCorporates?: string[];
+  selectedCorporateId?: string;
 }
 
 export interface AdminUser {
@@ -192,10 +190,11 @@ export interface AdminUser {
   firstName: string;
   lastName: string;
   email: string;
-  password: string;
+  password?: string; // Only used during creation, not stored in Firestore
   mobile: string;
   role: 'ADMIN' | 'DOCTOR' | 'NURSE';
   isSuperAdmin: boolean;
   assignedCorporates: string[];
+  location?: string;
   createdAt: Date;
 }

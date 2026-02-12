@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Corporate, AdminUser } from '@/types/clinic';
+import { auth, db, getSecondaryAuth } from '@/lib/firebase';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  createUserWithEmailAndPassword,
+} from 'firebase/auth';
+import {
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot,
+  Timestamp,
+} from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -12,9 +23,9 @@ interface AuthContextType {
   logout: () => void;
   selectCorporate: (corporateId: string) => void;
   adminUsers: AdminUser[];
-  addAdminUser: (user: Omit<AdminUser, 'id' | 'createdAt'>) => void;
-  updateAdminUser: (id: string, updates: Partial<AdminUser>) => void;
-  deleteAdminUser: (id: string) => void;
+  addAdminUser: (user: Omit<AdminUser, 'id' | 'createdAt'>) => Promise<void>;
+  updateAdminUser: (id: string, updates: Partial<AdminUser>) => Promise<void>;
+  deleteAdminUser: (id: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,78 +39,132 @@ const allCorporates: Corporate[] = [
   { id: 'corp5', name: 'HCL Technologies', location: 'Noida', address: 'Sector 126, Noida' },
 ];
 
-// Initial admin users with passwords
-const initialAdminUsers: AdminUser[] = [
-  { id: 'u1', email: 'doctor@truworth.com', password: 'demo123', firstName: 'Priya', lastName: 'Sharma', mobile: '9876543210', role: 'DOCTOR', isSuperAdmin: false, assignedCorporates: ['corp1', 'corp2'], createdAt: new Date() },
-  { id: 'u2', email: 'nurse@truworth.com', password: 'demo123', firstName: 'Anjali', lastName: 'Patel', mobile: '9876543211', role: 'NURSE', isSuperAdmin: false, assignedCorporates: ['corp1', 'corp3'], createdAt: new Date() },
-  { id: 'u3', email: 'admin@truworth.com', password: 'admin123', firstName: 'Admin', lastName: 'User', mobile: '9876543212', role: 'ADMIN', isSuperAdmin: true, assignedCorporates: [], createdAt: new Date() },
-];
+// Helper to convert Firestore Timestamps to Dates
+function convertTimestamps(data: Record<string, any>): Record<string, any> {
+  const result = { ...data };
+  for (const key of Object.keys(result)) {
+    if (result[key] && typeof result[key].toDate === 'function') {
+      result[key] = result[key].toDate();
+    }
+  }
+  return result;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [selectedCorporate, setSelectedCorporate] = useState<Corporate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(() => {
-    const stored = localStorage.getItem('clinicAdminUsers');
-    return stored ? JSON.parse(stored) : initialAdminUsers;
-  });
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
 
-  // Persist admin users to localStorage
+  // Listen to admin users from Firestore
   useEffect(() => {
-    localStorage.setItem('clinicAdminUsers', JSON.stringify(adminUsers));
-  }, [adminUsers]);
-
-  useEffect(() => {
-    // Check for existing session
-    const storedUser = localStorage.getItem('clinicUser');
-    const storedCorporate = localStorage.getItem('clinicSelectedCorporate');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      if (storedCorporate) {
-        setSelectedCorporate(JSON.parse(storedCorporate));
-      }
-    }
-    setIsLoading(false);
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const users = snapshot.docs.map(d => ({
+        id: d.id,
+        ...convertTimestamps(d.data()),
+      })) as AdminUser[];
+      setAdminUsers(users);
+    });
+    return unsubscribe;
   }, []);
 
-  // Get corporates assigned to current user
-  const assignedCorporates = user?.role === 'admin' 
-    ? allCorporates 
+  // Seed initial admin if no users exist in Firestore
+  useEffect(() => {
+    async function seedAdmin() {
+      try {
+        const snapshot = await getDocs(collection(db, 'users'));
+        if (snapshot.empty) {
+          const secondaryAuth = getSecondaryAuth();
+          const cred = await createUserWithEmailAndPassword(
+            secondaryAuth,
+            'admin@truworth.com',
+            'admin123'
+          );
+          await setDoc(doc(db, 'users', cred.user.uid), {
+            firstName: 'Admin',
+            lastName: 'User',
+            email: 'admin@truworth.com',
+            mobile: '9876543212',
+            role: 'ADMIN',
+            isSuperAdmin: true,
+            assignedCorporates: [],
+            location: '',
+            createdAt: Timestamp.now(),
+          });
+          await signOut(secondaryAuth);
+          console.log('Initial admin account seeded successfully');
+        }
+      } catch (err) {
+        console.error('Seed admin error:', err);
+      }
+    }
+    seedAdmin();
+  }, []);
+
+  // Firebase auth state listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            const userRole = data.role.toLowerCase() as 'doctor' | 'nurse' | 'admin';
+            const loggedInUser: User = {
+              id: firebaseUser.uid,
+              email: data.email,
+              name: `${data.firstName} ${data.lastName}`,
+              role: userRole,
+              locationId: data.location || '',
+              locationName: data.location || '',
+              assignedCorporates: data.assignedCorporates || [],
+            };
+            setUser(loggedInUser);
+
+            // Restore selected corporate
+            const storedCorp = localStorage.getItem('clinicSelectedCorporate');
+            if (storedCorp) {
+              setSelectedCorporate(JSON.parse(storedCorp));
+            } else if (userRole !== 'admin' && data.assignedCorporates?.length === 1) {
+              const corp = allCorporates.find(c => c.id === data.assignedCorporates[0]);
+              if (corp) {
+                setSelectedCorporate(corp);
+                localStorage.setItem('clinicSelectedCorporate', JSON.stringify(corp));
+              }
+            }
+          } else {
+            // User in Auth but not Firestore → sign out
+            await signOut(auth);
+          }
+        } catch (err) {
+          console.error('Error loading user data:', err);
+          await signOut(auth);
+        }
+      } else {
+        setUser(null);
+        setSelectedCorporate(null);
+      }
+      setIsLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  const assignedCorporates = user?.role === 'admin'
+    ? allCorporates
     : allCorporates.filter(c => user?.assignedCorporates?.includes(c.id));
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const foundUser = adminUsers.find(u => u.email === email && u.password === password);
-    
-    if (foundUser) {
-      const userRole = foundUser.role.toLowerCase() as 'doctor' | 'nurse' | 'admin';
-      const loggedInUser: User = {
-        id: foundUser.id,
-        email: foundUser.email,
-        name: `${foundUser.firstName} ${foundUser.lastName}`,
-        role: userRole,
-        locationId: '',
-        locationName: '',
-        assignedCorporates: foundUser.assignedCorporates,
-      };
-      setUser(loggedInUser);
-      localStorage.setItem('clinicUser', JSON.stringify(loggedInUser));
-      
-      // For non-admin users, if they have only one corporate, auto-select it
-      if (userRole !== 'admin' && foundUser.assignedCorporates.length === 1) {
-        const corp = allCorporates.find(c => c.id === foundUser.assignedCorporates[0]);
-        if (corp) {
-          setSelectedCorporate(corp);
-          localStorage.setItem('clinicSelectedCorporate', JSON.stringify(corp));
-        }
-      }
-      
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
       return true;
+    } catch {
+      return false;
     }
-    return false;
+  };
+
+  const logout = () => {
+    signOut(auth);
+    localStorage.removeItem('clinicSelectedCorporate');
   };
 
   const selectCorporate = (corporateId: string) => {
@@ -110,30 +175,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setSelectedCorporate(null);
-    localStorage.removeItem('clinicUser');
-    localStorage.removeItem('clinicSelectedCorporate');
+  const addAdminUser = async (userData: Omit<AdminUser, 'id' | 'createdAt'>) => {
+    if (!userData.password) throw new Error('Password is required');
+    const secondaryAuth = getSecondaryAuth();
+    const cred = await createUserWithEmailAndPassword(
+      secondaryAuth,
+      userData.email,
+      userData.password
+    );
+    await setDoc(doc(db, 'users', cred.user.uid), {
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      email: userData.email,
+      mobile: userData.mobile,
+      role: userData.role,
+      isSuperAdmin: userData.isSuperAdmin,
+      assignedCorporates: userData.assignedCorporates,
+      location: userData.location || '',
+      createdAt: Timestamp.now(),
+    });
+    await signOut(secondaryAuth);
   };
 
-  const addAdminUser = (userData: Omit<AdminUser, 'id' | 'createdAt'>) => {
-    const newUser: AdminUser = {
-      ...userData,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-    };
-    setAdminUsers(prev => [...prev, newUser]);
+  const updateAdminUser = async (id: string, updates: Partial<AdminUser>) => {
+    const { password, id: _, createdAt, ...firestoreUpdates } = updates as any;
+    await updateDoc(doc(db, 'users', id), firestoreUpdates);
+    // Note: Password update requires Firebase Admin SDK (server-side)
   };
 
-  const updateAdminUser = (id: string, updates: Partial<AdminUser>) => {
-    setAdminUsers(prev => prev.map(u => 
-      u.id === id ? { ...u, ...updates } : u
-    ));
-  };
-
-  const deleteAdminUser = (id: string) => {
-    setAdminUsers(prev => prev.filter(u => u.id !== id));
+  const deleteAdminUser = async (id: string) => {
+    await deleteDoc(doc(db, 'users', id));
+    // Note: Firebase Auth account remains but user can't access app without Firestore doc
   };
 
   return (
