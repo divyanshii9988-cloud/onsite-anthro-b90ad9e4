@@ -40,16 +40,22 @@ export default function Inventory() {
     return true;
   });
 
-  const lowStockCount = medicines.filter(m => m.quantity <= m.minStock).length;
+  const isLowStockItem = (m: typeof medicines[0]) => {
+    const twentyPercent = (m.totalQuantity || m.quantity) * 0.2;
+    return m.quantity <= twentyPercent || m.quantity <= m.minStock;
+  };
+  const lowStockCount = medicines.filter(isLowStockItem).length;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.sku || !formData.quantity || !formData.unit) {
       toast.error('Please fill in all required fields'); return;
     }
+    const qty = parseInt(formData.quantity);
     addMedicine({
       name: formData.name, sku: formData.sku, brand: formData.brand,
-      category: formData.category, quantity: parseInt(formData.quantity),
+      category: formData.category, quantity: qty,
+      totalQuantity: qty,
       unit: formData.unit, minStock: parseInt(formData.minStock) || 10,
       expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
       locationId: selectedCorporate?.id || '',
@@ -244,7 +250,7 @@ export default function Inventory() {
               </TableHeader>
               <TableBody>
                 {filteredMedicines.map((medicine) => {
-                  const isLowStock = medicine.quantity <= medicine.minStock;
+                  const isLowStock = isLowStockItem(medicine);
                   const isExpired = medicine.expiryDate && new Date(medicine.expiryDate) < now;
                   return (
                     <TableRow key={medicine.id} className={isExpired ? 'bg-destructive/5' : ''}>
