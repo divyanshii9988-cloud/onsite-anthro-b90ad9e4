@@ -66,6 +66,7 @@ export interface Medicine {
   brand: string;
   category: string;
   quantity: number;
+  totalQuantity: number;
   unit: string;
   expiryDate?: Date;
   minStock: number;
