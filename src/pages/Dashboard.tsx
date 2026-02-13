@@ -15,7 +15,7 @@ import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } fr
 
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
-  const { employees, walkIns, emergencies } = useData();
+  const { employees, walkIns, emergencies, medicines } = useData();
   const { selectedCorporate } = useAuth();
   
   // Filter data by date range
@@ -23,10 +23,11 @@ export default function Dashboard() {
   const filteredEmergencies = filterByDateRange(emergencies, dateRange, 'createdAt');
   const filteredEmployees = filterByDateRange(employees, dateRange, 'registeredAt');
 
-  // Calculate medicines dispensed
-  const medicinesDispensed = filteredWalkIns.reduce((acc, w) => {
-    return acc + (w.medicinesDispensed?.reduce((sum, m) => sum + m.quantity, 0) || 0);
-  }, 0);
+  // Calculate low stock medicines (quantity <= 20% of totalQuantity)
+  const lowStockMedicines = medicines.filter(m => {
+    const twentyPercent = (m.totalQuantity || m.quantity) * 0.2;
+    return m.quantity <= twentyPercent || m.quantity <= m.minStock;
+  });
   
   const statCards = [
     { 
@@ -44,11 +45,11 @@ export default function Dashboard() {
       trend: `${filteredEmployees.length} in period`
     },
     { 
-      label: 'Medicines Dispensed', 
-      value: medicinesDispensed, 
+      label: 'Low Stock Medicines', 
+      value: lowStockMedicines.length, 
       icon: Pill, 
-      color: 'bg-success',
-      trend: dateRange.label
+      color: lowStockMedicines.length > 0 ? 'bg-destructive' : 'bg-success',
+      trend: `${lowStockMedicines.length > 0 ? '⚠ Needs attention' : 'All stocked'}`
     },
     { 
       label: 'Emergencies', 
@@ -81,7 +82,7 @@ export default function Dashboard() {
     lines.push('=== SUMMARY ===');
     lines.push(`Total Walk-ins,${filteredWalkIns.length}`);
     lines.push(`Total Registrations,${employees.length} (${filteredEmployees.length} in period)`);
-    lines.push(`Medicines Dispensed,${medicinesDispensed}`);
+    lines.push(`Low Stock Medicines,${lowStockMedicines.length}`);
     lines.push(`Emergencies,${filteredEmergencies.length}`);
     lines.push('');
     
