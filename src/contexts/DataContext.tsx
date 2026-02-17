@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 
 interface DataContextType {
   employees: Employee[];
-  addEmployee: (employee: Omit<Employee, 'id' | 'registeredAt'>) => void;
+  addEmployee: (employee: Omit<Employee, 'id' | 'registeredAt'>) => boolean;
   searchEmployees: (query: string) => Employee[];
   getEmployee: (id: string) => Employee | undefined;
   walkIns: WalkIn[];
@@ -144,9 +144,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   // ─── Employees ─────────────────────────────────────────
-  const addEmployee = (employee: Omit<Employee, 'id' | 'registeredAt'>) => {
-    if (!hasPermission(userRole, 'register_employee')) { toast.error('Access Denied'); return; }
-    if (!validateCorporateAccess()) return;
+  const addEmployee = (employee: Omit<Employee, 'id' | 'registeredAt'>): boolean => {
+    if (!hasPermission(userRole, 'register_employee')) { toast.error('Access Denied'); return false; }
+    if (!validateCorporateAccess()) return false;
     addDoc(collection(db, 'employees'), stripUndefined({
       ...employee,
       corporateId: activeCorporateId || '',
@@ -154,6 +154,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       registeredAt: Timestamp.now(),
       createdAt: Timestamp.now(),
     }));
+    return true;
   };
 
   const searchEmployees = (query: string) => {

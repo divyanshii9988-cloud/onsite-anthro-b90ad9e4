@@ -50,7 +50,7 @@ export default function Employees() {
       return;
     }
 
-    addEmployee({
+    const success = addEmployee({
       employeeId: formData.employeeId,
       name: formData.name,
       email: formData.email,
@@ -62,6 +62,8 @@ export default function Employees() {
       gender: formData.gender || undefined,
       bloodGroup: formData.bloodGroup || undefined,
     });
+
+    if (!success) return;
 
     toast.success('Employee registered successfully!');
     setIsDialogOpen(false);
