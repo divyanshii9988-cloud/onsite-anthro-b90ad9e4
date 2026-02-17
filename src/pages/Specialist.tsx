@@ -12,10 +12,11 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } from '@/components/DateRangeFilter';
+import { hasPermission } from '@/lib/permissions';
 
 export default function Specialist() {
   const { specialistConsultations, addSpecialistConsultation, employees } = useData();
-  const { selectedCorporate } = useAuth();
+  const { selectedCorporate, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
@@ -55,7 +56,7 @@ export default function Specialist() {
         <div><h1 className="text-2xl font-bold text-foreground">Specialist Consultation</h1><p className="text-muted-foreground">Track specialist referrals and appointments</p></div>
         <div className="flex gap-3">
           <DateRangeFilter value={dateRange} onChange={setDateRange} />
-          <Button onClick={exportToCSV} variant="outline" className="gap-2"><Download className="w-4 h-4" />Export</Button>
+          {hasPermission(user?.role, 'download_mis') && <Button onClick={exportToCSV} variant="outline" className="gap-2"><Download className="w-4 h-4" />Export</Button>}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild><Button className="gap-2"><Plus className="w-4 h-4" />Schedule Consultation</Button></DialogTrigger>
             <DialogContent className="max-w-lg">

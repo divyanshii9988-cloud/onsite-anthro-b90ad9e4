@@ -12,6 +12,7 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } from '@/components/DateRangeFilter';
+import { hasPermission } from '@/lib/permissions';
 
 export default function Prescriptions() {
   const { prescriptions, addPrescription, employees } = useData();
@@ -26,6 +27,7 @@ export default function Prescriptions() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasPermission(user?.role, 'generate_prescription')) { toast.error('Access Denied: You do not have permission to generate prescriptions'); return; }
     if (!selectedEmployee || !formData.diagnosis || !formData.medicines) { toast.error('Please fill in all required fields'); return; }
     const medicineLines = formData.medicines.split('\n').filter(line => line.trim());
     const parsedMedicines = medicineLines.map(line => { const parts = line.split('-').map(p => p.trim()); return { name: parts[0] || line, dosage: parts[1] || '', duration: parts[2] || '', instructions: parts[3] || '' }; });
@@ -36,6 +38,9 @@ export default function Prescriptions() {
     setSelectedEmployee('');
     setFormData({ diagnosis: '', medicines: '', advice: '', sentVia: 'email' });
   };
+
+  const canDownloadMIS = hasPermission(user?.role, 'download_mis');
+  const canGeneratePrescription = hasPermission(user?.role, 'generate_prescription');
 
   const exportToCSV = () => {
     const headers = ['Date', 'Patient', 'Diagnosis', 'Doctor', 'Sent Via', 'Sent To'];
@@ -55,7 +60,8 @@ export default function Prescriptions() {
         <div><h1 className="text-2xl font-bold text-foreground">Digital Prescription</h1><p className="text-muted-foreground">Generate and send prescriptions via SMS/Email</p></div>
         <div className="flex gap-3">
           <DateRangeFilter value={dateRange} onChange={setDateRange} />
-          <Button onClick={exportToCSV} variant="outline" className="gap-2"><Download className="w-4 h-4" />Export</Button>
+          {canDownloadMIS && <Button onClick={exportToCSV} variant="outline" className="gap-2"><Download className="w-4 h-4" />Export</Button>}
+          {canGeneratePrescription && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild><Button className="gap-2"><Plus className="w-4 h-4" />New Prescription</Button></DialogTrigger>
             <DialogContent className="max-w-2xl">
@@ -70,6 +76,7 @@ export default function Prescriptions() {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

@@ -1,9 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { Employee, WalkIn, Medicine, Emergency, BiowWaste, AmbulanceMovement, SpecialistConsultation, DigitalPrescription } from '@/types/clinic';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { hasPermission, canAccessCorporate } from '@/lib/permissions';
 import {
   collection, addDoc, updateDoc, doc, onSnapshot, Timestamp,
 } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 interface DataContextType {
   employees: Employee[];
@@ -56,50 +59,91 @@ function toTimestamp(value: any): Timestamp | null {
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [walkIns, setWalkIns] = useState<WalkIn[]>([]);
-  const [medicines, setMedicines] = useState<Medicine[]>([]);
-  const [emergencies, setEmergencies] = useState<Emergency[]>([]);
-  const [bioWaste, setBioWaste] = useState<BiowWaste[]>([]);
-  const [ambulanceMovements, setAmbulanceMovements] = useState<AmbulanceMovement[]>([]);
-  const [specialistConsultations, setSpecialistConsultations] = useState<SpecialistConsultation[]>([]);
-  const [prescriptions, setPrescriptions] = useState<DigitalPrescription[]>([]);
+  const { user, selectedCorporate } = useAuth();
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
+  const [allWalkIns, setAllWalkIns] = useState<WalkIn[]>([]);
+  const [allMedicines, setAllMedicines] = useState<Medicine[]>([]);
+  const [allEmergencies, setAllEmergencies] = useState<Emergency[]>([]);
+  const [allBioWaste, setAllBioWaste] = useState<BiowWaste[]>([]);
+  const [allAmbulanceMovements, setAllAmbulanceMovements] = useState<AmbulanceMovement[]>([]);
+  const [allSpecialistConsultations, setAllSpecialistConsultations] = useState<SpecialistConsultation[]>([]);
+  const [allPrescriptions, setAllPrescriptions] = useState<DigitalPrescription[]>([]);
+
+  const activeCorporateId = selectedCorporate?.id || null;
+  const userRole = user?.role;
+  const isAdmin = userRole === 'admin';
+
+  // Corporate-based filtering helper
+  function filterByCorporate<T extends { corporateId?: string; locationId?: string }>(items: T[]): T[] {
+    if (isAdmin && !activeCorporateId) return items; // Admin with no filter sees all
+    if (!activeCorporateId) return [];
+    return items.filter(item => 
+      item.corporateId === activeCorporateId || item.locationId === activeCorporateId
+    );
+  }
+
+  // Filtered data based on active corporate
+  const employees = useMemo(() => filterByCorporate(allEmployees), [allEmployees, activeCorporateId, isAdmin]);
+  const walkIns = useMemo(() => filterByCorporate(allWalkIns), [allWalkIns, activeCorporateId, isAdmin]);
+  const medicines = useMemo(() => filterByCorporate(allMedicines), [allMedicines, activeCorporateId, isAdmin]);
+  const emergencies = useMemo(() => filterByCorporate(allEmergencies), [allEmergencies, activeCorporateId, isAdmin]);
+  const bioWaste = useMemo(() => filterByCorporate(allBioWaste), [allBioWaste, activeCorporateId, isAdmin]);
+  const ambulanceMovements = useMemo(() => filterByCorporate(allAmbulanceMovements), [allAmbulanceMovements, activeCorporateId, isAdmin]);
+  const specialistConsultations = useMemo(() => filterByCorporate(allSpecialistConsultations), [allSpecialistConsultations, activeCorporateId, isAdmin]);
+  const prescriptions = useMemo(() => filterByCorporate(allPrescriptions), [allPrescriptions, activeCorporateId, isAdmin]);
 
   // Firestore real-time listeners
   useEffect(() => {
     const unsubs = [
       onSnapshot(collection(db, 'employees'), (snap) => {
-        setEmployees(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as Employee)));
+        setAllEmployees(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as Employee)));
       }),
       onSnapshot(collection(db, 'walkIns'), (snap) => {
-        setWalkIns(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as WalkIn)));
+        setAllWalkIns(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as WalkIn)));
       }),
       onSnapshot(collection(db, 'medicines'), (snap) => {
-        setMedicines(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as Medicine)));
+        setAllMedicines(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as Medicine)));
       }),
       onSnapshot(collection(db, 'emergencies'), (snap) => {
-        setEmergencies(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as Emergency)));
+        setAllEmergencies(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as Emergency)));
       }),
       onSnapshot(collection(db, 'bioWaste'), (snap) => {
-        setBioWaste(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as BiowWaste)));
+        setAllBioWaste(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as BiowWaste)));
       }),
       onSnapshot(collection(db, 'ambulanceMovements'), (snap) => {
-        setAmbulanceMovements(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as AmbulanceMovement)));
+        setAllAmbulanceMovements(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as AmbulanceMovement)));
       }),
       onSnapshot(collection(db, 'specialistConsultations'), (snap) => {
-        setSpecialistConsultations(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as SpecialistConsultation)));
+        setAllSpecialistConsultations(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as SpecialistConsultation)));
       }),
       onSnapshot(collection(db, 'prescriptions'), (snap) => {
-        setPrescriptions(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as DigitalPrescription)));
+        setAllPrescriptions(snap.docs.map(d => ({ id: d.id, ...convertTimestamps(d.data()) } as DigitalPrescription)));
       }),
     ];
     return () => unsubs.forEach(u => u());
   }, []);
 
+  // Validate corporate access before any write
+  function validateCorporateAccess(): boolean {
+    if (isAdmin) return true;
+    if (!activeCorporateId) {
+      toast.error('Please select a corporate first');
+      return false;
+    }
+    if (!canAccessCorporate(userRole, user?.assignedCorporates, activeCorporateId)) {
+      toast.error('Access Denied: You do not have access to this corporate');
+      return false;
+    }
+    return true;
+  }
+
   // ─── Employees ─────────────────────────────────────────
   const addEmployee = (employee: Omit<Employee, 'id' | 'registeredAt'>) => {
+    if (!hasPermission(userRole, 'register_employee')) { toast.error('Access Denied'); return; }
+    if (!validateCorporateAccess()) return;
     addDoc(collection(db, 'employees'), {
       ...employee,
+      corporateId: activeCorporateId || '',
       registeredAt: Timestamp.now(),
     });
   };
@@ -118,9 +162,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── Walk-ins ──────────────────────────────────────────
   const addWalkIn = (walkIn: Omit<WalkIn, 'id' | 'createdAt'>) => {
+    if (!hasPermission(userRole, 'create_walkin')) { toast.error('Access Denied'); return; }
+    if (!validateCorporateAccess()) return;
     const { closureDate, followUpDate, ...rest } = walkIn as any;
     addDoc(collection(db, 'walkIns'), {
       ...rest,
+      corporateId: activeCorporateId || '',
       createdAt: Timestamp.now(),
       closureDate: toTimestamp(closureDate),
       followUpDate: toTimestamp(followUpDate),
@@ -136,19 +183,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── Medicines ─────────────────────────────────────────
   const addMedicine = (medicine: Omit<Medicine, 'id'>) => {
+    if (!hasPermission(userRole, 'update_inventory')) { toast.error('Access Denied'); return; }
+    if (!validateCorporateAccess()) return;
     const { expiryDate, ...rest } = medicine as any;
     addDoc(collection(db, 'medicines'), {
       ...rest,
+      corporateId: activeCorporateId || '',
       expiryDate: toTimestamp(expiryDate),
     });
   };
 
   const updateMedicineStock = (id: string, quantity: number) => {
+    if (!hasPermission(userRole, 'update_inventory')) { toast.error('Access Denied'); return; }
     updateDoc(doc(db, 'medicines', id), { quantity });
   };
 
   const dispenseMedicine = (id: string, quantity: number) => {
-    const medicine = medicines.find(m => m.id === id);
+    if (!hasPermission(userRole, 'dispense_medicine')) { toast.error('Access Denied'); return false; }
+    const medicine = allMedicines.find(m => m.id === id);
     if (medicine && medicine.quantity >= quantity) {
       updateDoc(doc(db, 'medicines', id), {
         quantity: medicine.quantity - quantity,
@@ -160,17 +212,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── Emergencies ───────────────────────────────────────
   const addEmergency = (emergency: Omit<Emergency, 'id' | 'createdAt'>) => {
+    if (!hasPermission(userRole, 'create_walkin')) { toast.error('Access Denied'); return; }
+    if (!validateCorporateAccess()) return;
     addDoc(collection(db, 'emergencies'), {
       ...emergency,
+      corporateId: activeCorporateId || '',
       createdAt: Timestamp.now(),
     });
   };
 
   // ─── Bio Waste ─────────────────────────────────────────
   const addBioWaste = (waste: Omit<BiowWaste, 'id'>) => {
+    if (!hasPermission(userRole, 'log_biowaste')) { toast.error('Access Denied'); return; }
+    if (!validateCorporateAccess()) return;
     const { collectedAt, disposedAt, ...rest } = waste as any;
     addDoc(collection(db, 'bioWaste'), {
       ...rest,
+      corporateId: activeCorporateId || '',
       collectedAt: toTimestamp(collectedAt) || Timestamp.now(),
       disposedAt: toTimestamp(disposedAt),
     });
@@ -178,9 +236,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── Ambulance ─────────────────────────────────────────
   const addAmbulanceMovement = (movement: Omit<AmbulanceMovement, 'id'>) => {
+    if (!hasPermission(userRole, 'log_ambulance')) { toast.error('Access Denied'); return; }
+    if (!validateCorporateAccess()) return;
     const { departureTime, arrivalTime, ...rest } = movement as any;
     addDoc(collection(db, 'ambulanceMovements'), {
       ...rest,
+      corporateId: activeCorporateId || '',
       departureTime: toTimestamp(departureTime) || Timestamp.now(),
       arrivalTime: toTimestamp(arrivalTime),
     });
@@ -188,9 +249,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── Specialist Consultations ──────────────────────────
   const addSpecialistConsultation = (consultation: Omit<SpecialistConsultation, 'id' | 'createdAt'>) => {
+    if (!hasPermission(userRole, 'schedule_specialist')) { toast.error('Access Denied'); return; }
+    if (!validateCorporateAccess()) return;
     const { appointmentDate, ...rest } = consultation as any;
     addDoc(collection(db, 'specialistConsultations'), {
       ...rest,
+      corporateId: activeCorporateId || '',
       appointmentDate: toTimestamp(appointmentDate) || Timestamp.now(),
       createdAt: Timestamp.now(),
     });
@@ -198,8 +262,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── Prescriptions ────────────────────────────────────
   const addPrescription = (prescription: Omit<DigitalPrescription, 'id' | 'sentAt'>) => {
+    if (!hasPermission(userRole, 'generate_prescription')) { toast.error('Access Denied: Only doctors and admins can generate prescriptions'); return; }
+    if (!validateCorporateAccess()) return;
     addDoc(collection(db, 'prescriptions'), {
       ...prescription,
+      corporateId: activeCorporateId || '',
       sentAt: Timestamp.now(),
     });
   };

@@ -18,23 +18,31 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { hasPermission } from '@/lib/permissions';
+import type { Permission } from '@/lib/permissions';
 
+interface NavItem {
+  path: string;
+  label: string;
+  icon: any;
+  permission?: Permission;
+}
 
-const navItems = [
+const navItems: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/employees', label: 'Employee Registration', icon: UserPlus },
-  { path: '/walk-ins', label: 'Daily Walk-ins', icon: Stethoscope },
-  { path: '/medicines', label: 'Medicine Dispensation', icon: Pill },
-  { path: '/inventory', label: 'Medicine Inventory', icon: Package },
-  { path: '/biowaste', label: 'Bio-Medical Waste', icon: Trash2 },
-  { path: '/ambulance', label: 'Ambulance Movement', icon: Truck },
-  { path: '/specialist', label: 'Specialist Consultation', icon: UserCheck },
-  { path: '/prescriptions', label: 'Digital Prescription', icon: FileText },
+  { path: '/employees', label: 'Employee Registration', icon: UserPlus, permission: 'register_employee' },
+  { path: '/walk-ins', label: 'Daily Walk-ins', icon: Stethoscope, permission: 'create_walkin' },
+  { path: '/medicines', label: 'Medicine Dispensation', icon: Pill, permission: 'dispense_medicine' },
+  { path: '/inventory', label: 'Medicine Inventory', icon: Package, permission: 'update_inventory' },
+  { path: '/biowaste', label: 'Bio-Medical Waste', icon: Trash2, permission: 'log_biowaste' },
+  { path: '/ambulance', label: 'Ambulance Movement', icon: Truck, permission: 'log_ambulance' },
+  { path: '/specialist', label: 'Specialist Consultation', icon: UserCheck, permission: 'schedule_specialist' },
+  { path: '/prescriptions', label: 'Digital Prescription', icon: FileText, permission: 'generate_prescription' },
   { path: '/employee-timeline', label: 'Medical Timeline', icon: Clock },
 ];
 
-const adminItems = [
-  { path: '/admin-users', label: 'Manage Users', icon: Users },
+const adminItems: NavItem[] = [
+  { path: '/admin-users', label: 'Manage Users', icon: Users, permission: 'create_users' },
 ];
 
 export function Sidebar() {
@@ -42,7 +50,15 @@ export function Sidebar() {
   const location = useLocation();
   const { logout, user } = useAuth();
 
-  const isAdmin = user?.role === 'admin';
+  const userRole = user?.role;
+
+  const visibleNavItems = navItems.filter(item => 
+    !item.permission || hasPermission(userRole, item.permission)
+  );
+
+  const visibleAdminItems = adminItems.filter(item =>
+    !item.permission || hasPermission(userRole, item.permission)
+  );
 
   return (
     <aside className={cn(
@@ -65,7 +81,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
           
@@ -88,7 +104,7 @@ export function Sidebar() {
         })}
 
         {/* Admin Section */}
-        {isAdmin && (
+        {visibleAdminItems.length > 0 && (
           <>
             {!collapsed && (
               <div className="pt-4 pb-2">
@@ -97,7 +113,7 @@ export function Sidebar() {
                 </p>
               </div>
             )}
-            {adminItems.map((item) => {
+            {visibleAdminItems.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
               

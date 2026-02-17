@@ -12,11 +12,13 @@ import { Button } from '@/components/ui/button';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } from '@/components/DateRangeFilter';
+import { hasPermission } from '@/lib/permissions';
 
 export default function Dashboard() {
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
   const { employees, walkIns, emergencies, medicines } = useData();
-  const { selectedCorporate } = useAuth();
+  const { selectedCorporate, user } = useAuth();
+  const canDownloadMIS = hasPermission(user?.role, 'download_mis');
   
   // Filter data by date range
   const filteredWalkIns = filterByDateRange(walkIns, dateRange, 'createdAt');
@@ -178,10 +180,12 @@ export default function Dashboard() {
         </div>
         <div className="flex gap-3">
           <DateRangeFilter value={dateRange} onChange={setDateRange} />
-          <Button onClick={exportToCSV} variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export Report
-          </Button>
+          {canDownloadMIS && (
+            <Button onClick={exportToCSV} variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Export Report
+            </Button>
+          )}
         </div>
       </div>
 
@@ -224,12 +228,12 @@ export default function Dashboard() {
               { label: 'Log Emergency', path: '/walk-ins', icon: AlertTriangle },
               { label: 'Add Medicine', path: '/inventory', icon: Pill },
               { label: 'Waste Log', path: '/biowaste', icon: Pill },
-              { label: 'Prescription', path: '/prescriptions', icon: Pill },
+              ...(hasPermission(user?.role, 'generate_prescription') ? [{ label: 'Prescription', path: '/prescriptions', icon: Pill }] : []),
             ].map((action) => {
               const Icon = action.icon;
               return (
                 <a
-                  key={action.path}
+                  key={action.label}
                   href={action.path}
                   className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted/50 hover:bg-primary/10 hover:text-primary transition-colors text-center group"
                 >

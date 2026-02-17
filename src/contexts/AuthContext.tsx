@@ -173,6 +173,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const selectCorporate = (corporateId: string) => {
+    if (!corporateId) {
+      // Admin clearing filter
+      setSelectedCorporate(null);
+      localStorage.removeItem('clinicSelectedCorporate');
+      return;
+    }
     const corporate = allCorporates.find(c => c.id === corporateId);
     if (corporate) {
       setSelectedCorporate(corporate);

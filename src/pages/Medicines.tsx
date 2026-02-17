@@ -10,10 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { hasPermission } from '@/lib/permissions';
 
 export default function Medicines() {
   const { walkIns, employees, medicines, dispenseMedicine } = useData();
-  const { selectedCorporate } = useAuth();
+  const { selectedCorporate, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Get all dispensed medicines from walk-ins
@@ -67,10 +68,12 @@ export default function Medicines() {
           <h1 className="text-2xl font-bold text-foreground">Medicine Dispensation</h1>
           <p className="text-muted-foreground">Track medicines dispensed during consultations</p>
         </div>
-        <Button onClick={exportToCSV} variant="outline" className="gap-2">
-          <Download className="w-4 h-4" />
-          Export
-        </Button>
+        {hasPermission(user?.role, 'download_mis') && (
+          <Button onClick={exportToCSV} variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            Export
+          </Button>
+        )}
       </div>
 
       {/* Stats */}

@@ -11,10 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { hasPermission } from '@/lib/permissions';
 
 export default function Inventory() {
   const { medicines, addMedicine, updateMedicineStock } = useData();
-  const { selectedCorporate } = useAuth();
+  const { selectedCorporate, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showExpired, setShowExpired] = useState(false);
@@ -101,9 +102,11 @@ export default function Inventory() {
           <p className="text-muted-foreground">Track location-wise medicine stock</p>
         </div>
         <div className="flex gap-3">
-          <Button onClick={exportToCSV} variant="outline" className="gap-2">
-            <Download className="w-4 h-4" /> Export
-          </Button>
+          {hasPermission(user?.role, 'download_mis') && (
+            <Button onClick={exportToCSV} variant="outline" className="gap-2">
+              <Download className="w-4 h-4" /> Export
+            </Button>
+          )}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2"><Plus className="w-4 h-4" /> Add Medicine</Button>
