@@ -108,7 +108,7 @@ export default function WalkIns() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedEmployee) {
@@ -116,13 +116,15 @@ export default function WalkIns() {
       return;
     }
 
+    let success = false;
+
     if (isEmergency) {
       if (!emergencyData.incidentType || !emergencyData.description) {
         toast.error('Please fill in incident type and description');
         return;
       }
 
-      addWalkIn({
+      success = await addWalkIn({
         employeeId: selectedEmployee,
         employeeName: selectedEmp?.name || '',
         consultationType: 'doctor',
@@ -144,7 +146,7 @@ export default function WalkIns() {
         closureRemarks: emergencyData.closureRemarks || undefined,
       });
 
-      toast.success('Emergency incident logged successfully!');
+      if (success) toast.success('Emergency incident logged successfully!');
     } else {
       if (!formData.chiefComplaint) {
         toast.error('Please enter chief complaint');
@@ -153,7 +155,7 @@ export default function WalkIns() {
 
       const selectedMedicine = medicines.find(m => m.id === formData.medicineId);
 
-      addWalkIn({
+      success = await addWalkIn({
         employeeId: selectedEmployee,
         employeeName: selectedEmp?.name || '',
         consultationType: formData.consultationType,
@@ -177,8 +179,10 @@ export default function WalkIns() {
         isEmergency: false,
       });
 
-      toast.success('Walk-in recorded successfully!');
+      if (success) toast.success('Walk-in recorded successfully!');
     }
+
+    if (!success) return;
 
     setIsDialogOpen(false);
     resetForm();

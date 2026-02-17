@@ -14,7 +14,7 @@ interface DataContextType {
   searchEmployees: (query: string) => Employee[];
   getEmployee: (id: string) => Employee | undefined;
   walkIns: WalkIn[];
-  addWalkIn: (walkIn: Omit<WalkIn, 'id' | 'createdAt'>) => void;
+  addWalkIn: (walkIn: Omit<WalkIn, 'id' | 'createdAt'>) => Promise<boolean>;
   medicines: Medicine[];
   addMedicine: (medicine: Omit<Medicine, 'id'>) => void;
   updateMedicineStock: (id: string, quantity: number) => void;
@@ -170,11 +170,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const getEmployee = (id: string) => employees.find(emp => emp.id === id);
 
   // ─── Walk-ins ──────────────────────────────────────────
-  const addWalkIn = (walkIn: Omit<WalkIn, 'id' | 'createdAt'>) => {
-    if (!hasPermission(userRole, 'create_walkin')) { toast.error('Access Denied'); return; }
-    if (!validateCorporateAccess()) return;
+  const addWalkIn = async (walkIn: Omit<WalkIn, 'id' | 'createdAt'>): Promise<boolean> => {
+    if (!hasPermission(userRole, 'create_walkin')) { toast.error('Access Denied'); return false; }
+    if (!validateCorporateAccess()) return false;
     const { closureDate, followUpDate, ...rest } = walkIn as any;
-    addDoc(collection(db, 'walkIns'), stripUndefined({
+    const walkinRef = await addDoc(collection(db, 'walkIns'), stripUndefined({
       ...rest,
       corporateId: activeCorporateId || '',
       location: userLocation,
@@ -183,12 +183,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
       followUpDate: toTimestamp(followUpDate),
     }));
 
+    // If emergency, also create a separate document in the emergencies collection
+    if (walkIn.isEmergency) {
+      await addDoc(collection(db, 'emergencies'), stripUndefined({
+        walkinId: walkinRef.id,
+        employeeId: walkIn.employeeId,
+        employeeName: walkIn.employeeName,
+        incidentType: walkIn.incidentType || '',
+        severity: walkIn.severity || 'moderate',
+        description: walkIn.description || '',
+        actionTaken: walkIn.actionTaken || '',
+        ambulanceUsed: walkIn.ambulanceUsed || false,
+        ambulanceDetails: walkIn.ambulanceDetails,
+        escalatedTo: walkIn.escalatedTo,
+        outcome: walkIn.outcome || '',
+        caseStatus: walkIn.caseStatus || 'open',
+        corporateId: activeCorporateId || '',
+        location: userLocation,
+        locationId: walkIn.locationId,
+        createdAt: Timestamp.now(),
+      }));
+    }
+
     // Update medicine stock
     if (walkIn.medicinesDispensed) {
       walkIn.medicinesDispensed.forEach(med => {
         dispenseMedicine(med.medicineId, med.quantity);
       });
     }
+    return true;
   };
 
   // ─── Medicines ─────────────────────────────────────────
