@@ -70,6 +70,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [allPrescriptions, setAllPrescriptions] = useState<DigitalPrescription[]>([]);
 
   const activeCorporateId = selectedCorporate?.id || null;
+  const userLocation = user?.locationId || '';
   const userRole = user?.role;
   const isAdmin = userRole === 'admin';
 
@@ -144,7 +145,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addDoc(collection(db, 'employees'), {
       ...employee,
       corporateId: activeCorporateId || '',
+      location: userLocation,
       registeredAt: Timestamp.now(),
+      createdAt: Timestamp.now(),
     });
   };
 
@@ -168,6 +171,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addDoc(collection(db, 'walkIns'), {
       ...rest,
       corporateId: activeCorporateId || '',
+      location: userLocation,
       createdAt: Timestamp.now(),
       closureDate: toTimestamp(closureDate),
       followUpDate: toTimestamp(followUpDate),
@@ -189,6 +193,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addDoc(collection(db, 'medicines'), {
       ...rest,
       corporateId: activeCorporateId || '',
+      location: userLocation,
+      createdAt: Timestamp.now(),
       expiryDate: toTimestamp(expiryDate),
     });
   };
@@ -217,6 +223,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addDoc(collection(db, 'emergencies'), {
       ...emergency,
       corporateId: activeCorporateId || '',
+      location: userLocation,
       createdAt: Timestamp.now(),
     });
   };
@@ -229,6 +236,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addDoc(collection(db, 'bioWaste'), {
       ...rest,
       corporateId: activeCorporateId || '',
+      location: userLocation,
+      createdAt: Timestamp.now(),
       collectedAt: toTimestamp(collectedAt) || Timestamp.now(),
       disposedAt: toTimestamp(disposedAt),
     });
@@ -242,6 +251,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addDoc(collection(db, 'ambulanceMovements'), {
       ...rest,
       corporateId: activeCorporateId || '',
+      location: userLocation,
+      createdAt: Timestamp.now(),
       departureTime: toTimestamp(departureTime) || Timestamp.now(),
       arrivalTime: toTimestamp(arrivalTime),
     });
@@ -255,6 +266,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addDoc(collection(db, 'specialistConsultations'), {
       ...rest,
       corporateId: activeCorporateId || '',
+      location: userLocation,
       appointmentDate: toTimestamp(appointmentDate) || Timestamp.now(),
       createdAt: Timestamp.now(),
     });
@@ -267,6 +279,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     addDoc(collection(db, 'prescriptions'), {
       ...prescription,
       corporateId: activeCorporateId || '',
+      location: userLocation,
+      createdAt: Timestamp.now(),
       sentAt: Timestamp.now(),
     });
   };
