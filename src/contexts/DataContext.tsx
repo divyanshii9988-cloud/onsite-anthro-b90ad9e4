@@ -50,6 +50,11 @@ function convertTimestamps(data: Record<string, any>): Record<string, any> {
   return result;
 }
 
+// Strip undefined values from an object (Firestore rejects undefined)
+function stripUndefined(obj: Record<string, any>): Record<string, any> {
+  return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== undefined));
+}
+
 // Convert a Date (or Date-like) value to Firestore Timestamp, or null
 function toTimestamp(value: any): Timestamp | null {
   if (!value) return null;
@@ -142,13 +147,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const addEmployee = (employee: Omit<Employee, 'id' | 'registeredAt'>) => {
     if (!hasPermission(userRole, 'register_employee')) { toast.error('Access Denied'); return; }
     if (!validateCorporateAccess()) return;
-    addDoc(collection(db, 'employees'), {
+    addDoc(collection(db, 'employees'), stripUndefined({
       ...employee,
       corporateId: activeCorporateId || '',
       location: userLocation,
       registeredAt: Timestamp.now(),
       createdAt: Timestamp.now(),
-    });
+    }));
   };
 
   const searchEmployees = (query: string) => {
@@ -168,14 +173,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!hasPermission(userRole, 'create_walkin')) { toast.error('Access Denied'); return; }
     if (!validateCorporateAccess()) return;
     const { closureDate, followUpDate, ...rest } = walkIn as any;
-    addDoc(collection(db, 'walkIns'), {
+    addDoc(collection(db, 'walkIns'), stripUndefined({
       ...rest,
       corporateId: activeCorporateId || '',
       location: userLocation,
       createdAt: Timestamp.now(),
       closureDate: toTimestamp(closureDate),
       followUpDate: toTimestamp(followUpDate),
-    });
+    }));
 
     // Update medicine stock
     if (walkIn.medicinesDispensed) {
@@ -190,13 +195,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!hasPermission(userRole, 'update_inventory')) { toast.error('Access Denied'); return; }
     if (!validateCorporateAccess()) return;
     const { expiryDate, ...rest } = medicine as any;
-    addDoc(collection(db, 'medicines'), {
+    addDoc(collection(db, 'medicines'), stripUndefined({
       ...rest,
       corporateId: activeCorporateId || '',
       location: userLocation,
       createdAt: Timestamp.now(),
       expiryDate: toTimestamp(expiryDate),
-    });
+    }));
   };
 
   const updateMedicineStock = (id: string, quantity: number) => {
@@ -220,12 +225,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const addEmergency = (emergency: Omit<Emergency, 'id' | 'createdAt'>) => {
     if (!hasPermission(userRole, 'create_walkin')) { toast.error('Access Denied'); return; }
     if (!validateCorporateAccess()) return;
-    addDoc(collection(db, 'emergencies'), {
+    addDoc(collection(db, 'emergencies'), stripUndefined({
       ...emergency,
       corporateId: activeCorporateId || '',
       location: userLocation,
       createdAt: Timestamp.now(),
-    });
+    }));
   };
 
   // ─── Bio Waste ─────────────────────────────────────────
@@ -233,14 +238,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!hasPermission(userRole, 'log_biowaste')) { toast.error('Access Denied'); return; }
     if (!validateCorporateAccess()) return;
     const { collectedAt, disposedAt, ...rest } = waste as any;
-    addDoc(collection(db, 'bioWaste'), {
+    addDoc(collection(db, 'bioWaste'), stripUndefined({
       ...rest,
       corporateId: activeCorporateId || '',
       location: userLocation,
       createdAt: Timestamp.now(),
       collectedAt: toTimestamp(collectedAt) || Timestamp.now(),
       disposedAt: toTimestamp(disposedAt),
-    });
+    }));
   };
 
   // ─── Ambulance ─────────────────────────────────────────
@@ -248,14 +253,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!hasPermission(userRole, 'log_ambulance')) { toast.error('Access Denied'); return; }
     if (!validateCorporateAccess()) return;
     const { departureTime, arrivalTime, ...rest } = movement as any;
-    addDoc(collection(db, 'ambulanceMovements'), {
+    addDoc(collection(db, 'ambulanceMovements'), stripUndefined({
       ...rest,
       corporateId: activeCorporateId || '',
       location: userLocation,
       createdAt: Timestamp.now(),
       departureTime: toTimestamp(departureTime) || Timestamp.now(),
       arrivalTime: toTimestamp(arrivalTime),
-    });
+    }));
   };
 
   // ─── Specialist Consultations ──────────────────────────
@@ -263,26 +268,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!hasPermission(userRole, 'schedule_specialist')) { toast.error('Access Denied'); return; }
     if (!validateCorporateAccess()) return;
     const { appointmentDate, ...rest } = consultation as any;
-    addDoc(collection(db, 'specialistConsultations'), {
+    addDoc(collection(db, 'specialistConsultations'), stripUndefined({
       ...rest,
       corporateId: activeCorporateId || '',
       location: userLocation,
       appointmentDate: toTimestamp(appointmentDate) || Timestamp.now(),
       createdAt: Timestamp.now(),
-    });
+    }));
   };
 
   // ─── Prescriptions ────────────────────────────────────
   const addPrescription = (prescription: Omit<DigitalPrescription, 'id' | 'sentAt'>) => {
     if (!hasPermission(userRole, 'generate_prescription')) { toast.error('Access Denied: Only doctors and admins can generate prescriptions'); return; }
     if (!validateCorporateAccess()) return;
-    addDoc(collection(db, 'prescriptions'), {
+    addDoc(collection(db, 'prescriptions'), stripUndefined({
       ...prescription,
       corporateId: activeCorporateId || '',
       location: userLocation,
       createdAt: Timestamp.now(),
       sentAt: Timestamp.now(),
-    });
+    }));
   };
 
   // ─── Stats ─────────────────────────────────────────────
