@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             mobile: '9876543212',
             role: 'ADMIN',
             isSuperAdmin: true,
-            assignedCorporates: [],
+            corporates: [],
             location: '',
             createdAt: serverTimestamp(),
           });
@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: userRole,
               locationId: data.location || '',
               locationName: data.location || '',
-              assignedCorporates: data.assignedCorporates || [],
+              assignedCorporates: data.corporates || data.assignedCorporates || [],
             };
             setUser(loggedInUser);
 
@@ -126,8 +126,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const storedCorp = localStorage.getItem('clinicSelectedCorporate');
             if (storedCorp) {
               setSelectedCorporate(JSON.parse(storedCorp));
-            } else if (userRole !== 'admin' && data.assignedCorporates?.length === 1) {
-              const corp = allCorporates.find(c => c.id === data.assignedCorporates[0]);
+            } else if (userRole !== 'admin' && (data.corporates || data.assignedCorporates)?.length === 1) {
+              const corp = allCorporates.find(c => c.id === (data.corporates || data.assignedCorporates)[0]);
               if (corp) {
                 setSelectedCorporate(corp);
                 localStorage.setItem('clinicSelectedCorporate', JSON.stringify(corp));
@@ -192,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mobile: userData.mobile,
       role: userData.role,
       isSuperAdmin: userData.isSuperAdmin,
-      assignedCorporates: userData.assignedCorporates,
+      corporates: userData.assignedCorporates,
       location: userData.location || '',
       createdAt: serverTimestamp(),
     });
