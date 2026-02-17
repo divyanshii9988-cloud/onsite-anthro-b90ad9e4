@@ -10,11 +10,12 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { hasPermission } from '@/lib/permissions';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
 export default function AdminUsers() {
-  const { adminUsers, addAdminUser, updateAdminUser, deleteAdminUser, corporates } = useAuth();
+  const { adminUsers, addAdminUser, updateAdminUser, deleteAdminUser, corporates, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -24,6 +25,17 @@ export default function AdminUsers() {
     mobile: '', role: '' as 'ADMIN' | 'DOCTOR' | 'NURSE' | '',
     isSuperAdmin: false, assignedCorporates: [] as string[], location: '',
   });
+
+  if (!hasPermission(user?.role, 'create_users')) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-destructive mb-2">Access Denied</h2>
+          <p className="text-muted-foreground">You do not have permission to manage users.</p>
+        </div>
+      </div>
+    );
+  }
 
   const locations = [...new Set(corporates.map(c => c.location))];
 

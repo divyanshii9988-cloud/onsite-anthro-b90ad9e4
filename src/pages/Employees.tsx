@@ -8,11 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useData } from '@/contexts/DataContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } from '@/components/DateRangeFilter';
+import { hasPermission } from '@/lib/permissions';
 
 export default function Employees() {
   const { employees, addEmployee, searchEmployees } = useData();
+  const { user } = useAuth();
+  const canDownloadMIS = hasPermission(user?.role, 'download_mis');
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
@@ -101,10 +105,12 @@ export default function Employees() {
         </div>
         <div className="flex gap-3">
           <DateRangeFilter value={dateRange} onChange={setDateRange} />
-          <Button onClick={exportToCSV} variant="outline" className="gap-2">
-            <Download className="w-4 h-4" />
-            Export
-          </Button>
+          {canDownloadMIS && (
+            <Button onClick={exportToCSV} variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
+          )}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">

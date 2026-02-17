@@ -12,10 +12,11 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } from '@/components/DateRangeFilter';
+import { hasPermission } from '@/lib/permissions';
 
 export default function BioWaste() {
   const { bioWaste, addBioWaste } = useData();
-  const { selectedCorporate } = useAuth();
+  const { selectedCorporate, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
   const [formData, setFormData] = useState({ wasteType: '' as 'yellow' | 'red' | 'blue' | 'white' | 'black' | '', quantity: '', unit: 'kg' as 'kg' | 'bags', collectedBy: '', remarks: '' });
@@ -52,7 +53,7 @@ export default function BioWaste() {
         <div><h1 className="text-2xl font-bold text-foreground">Bio-Medical Waste Management</h1><p className="text-muted-foreground">Track waste disposal for compliance</p></div>
         <div className="flex gap-3">
           <DateRangeFilter value={dateRange} onChange={setDateRange} />
-          <Button onClick={exportToCSV} variant="outline" className="gap-2"><Download className="w-4 h-4" />Export</Button>
+          {hasPermission(user?.role, 'download_mis') && <Button onClick={exportToCSV} variant="outline" className="gap-2"><Download className="w-4 h-4" />Export</Button>}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild><Button className="gap-2"><Plus className="w-4 h-4" />Add Waste Log</Button></DialogTrigger>
             <DialogContent>

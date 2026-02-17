@@ -11,10 +11,11 @@ import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { DateRangeFilter, DateRange, getDefaultDateRange, filterByDateRange } from '@/components/DateRangeFilter';
+import { hasPermission } from '@/lib/permissions';
 
 export default function Ambulance() {
   const { ambulanceMovements, addAmbulanceMovement } = useData();
-  const { selectedCorporate } = useAuth();
+  const { selectedCorporate, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
   const [formData, setFormData] = useState({ vehicleNumber: '', driverName: '', driverContact: '', patientName: '', pickupLocation: '', dropLocation: '', remarks: '' });
@@ -48,7 +49,7 @@ export default function Ambulance() {
         <div><h1 className="text-2xl font-bold text-foreground">Ambulance Movement</h1><p className="text-muted-foreground">Track ambulance usage and movements</p></div>
         <div className="flex gap-3">
           <DateRangeFilter value={dateRange} onChange={setDateRange} />
-          <Button onClick={exportToCSV} variant="outline" className="gap-2"><Download className="w-4 h-4" />Export</Button>
+          {hasPermission(user?.role, 'download_mis') && <Button onClick={exportToCSV} variant="outline" className="gap-2"><Download className="w-4 h-4" />Export</Button>}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild><Button className="gap-2"><Plus className="w-4 h-4" />Log Movement</Button></DialogTrigger>
             <DialogContent className="max-w-lg">
