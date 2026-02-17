@@ -9,7 +9,7 @@ import {
 } from 'firebase/auth';
 import {
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot,
-  Timestamp,
+  Timestamp, serverTimestamp,
 } from 'firebase/firestore';
 
 interface AuthContextType {
@@ -81,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             'admin123'
           );
           await setDoc(doc(db, 'users', cred.user.uid), {
+            uid: cred.user.uid,
             firstName: 'Admin',
             lastName: 'User',
             email: 'admin@truworth.com',
@@ -89,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isSuperAdmin: true,
             assignedCorporates: [],
             location: '',
-            createdAt: Timestamp.now(),
+            createdAt: serverTimestamp(),
           });
           await signOut(secondaryAuth);
           console.log('Initial admin account seeded successfully');
@@ -184,6 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userData.password
     );
     await setDoc(doc(db, 'users', cred.user.uid), {
+      uid: cred.user.uid,
       firstName: userData.firstName,
       lastName: userData.lastName,
       email: userData.email,
@@ -192,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isSuperAdmin: userData.isSuperAdmin,
       assignedCorporates: userData.assignedCorporates,
       location: userData.location || '',
-      createdAt: Timestamp.now(),
+      createdAt: serverTimestamp(),
     });
     await signOut(secondaryAuth);
   };
