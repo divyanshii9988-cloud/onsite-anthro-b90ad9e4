@@ -59,10 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Listen to admin users from Firestore
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const users = snapshot.docs.map(d => ({
-        id: d.id,
-        ...convertTimestamps(d.data()),
-      })) as AdminUser[];
+      const users = snapshot.docs.map(d => {
+        const data = convertTimestamps(d.data());
+        return {
+          id: d.id,
+          ...data,
+          assignedCorporates: data.corporates || data.assignedCorporates || [],
+        } as AdminUser;
+      });
       setAdminUsers(users);
     });
     return unsubscribe;
