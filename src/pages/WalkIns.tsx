@@ -53,6 +53,11 @@ export default function WalkIns() {
     severity: 'moderate' as 'minor' | 'moderate' | 'critical',
     description: '',
     actionTaken: '',
+    bp: '',
+    pulse: '',
+    temperature: '',
+    spo2: '',
+    weight: '',
     ambulanceUsed: false,
     ambulanceDetails: '',
     escalatedTo: '',
@@ -131,6 +136,13 @@ export default function WalkIns() {
         doctorName: user?.name,
         chiefComplaint: emergencyData.incidentType,
         diagnosis: emergencyData.description,
+        vitals: {
+          bp: emergencyData.bp || undefined,
+          pulse: emergencyData.pulse ? parseInt(emergencyData.pulse) : undefined,
+          temperature: emergencyData.temperature ? parseFloat(emergencyData.temperature) : undefined,
+          spo2: emergencyData.spo2 ? parseInt(emergencyData.spo2) : undefined,
+          weight: emergencyData.weight ? parseFloat(emergencyData.weight) : undefined,
+        },
         locationId: selectedCorporate?.id || '',
         isEmergency: true,
         incidentType: emergencyData.incidentType,
@@ -200,6 +212,7 @@ export default function WalkIns() {
     });
     setEmergencyData({
       incidentType: '', severity: 'moderate', description: '', actionTaken: '',
+      bp: '', pulse: '', temperature: '', spo2: '', weight: '',
       ambulanceUsed: false, ambulanceDetails: '', escalatedTo: '', outcome: '',
       caseStatus: 'open', closureDate: '', closureRemarks: '',
     });
@@ -376,6 +389,33 @@ export default function WalkIns() {
                         rows={2}
                       />
                     </div>
+                    {/* Vitals */}
+                    <div>
+                      <h4 className="text-sm font-medium text-foreground mb-3">Vitals</h4>
+                      <div className="grid grid-cols-5 gap-3">
+                        <div className="form-group">
+                          <Label className="form-label text-xs">BP (mmHg)</Label>
+                          <Input value={emergencyData.bp || ''} onChange={(e) => setEmergencyData(prev => ({ ...prev, bp: e.target.value }))} placeholder="120/80" />
+                        </div>
+                        <div className="form-group">
+                          <Label className="form-label text-xs">Pulse (bpm)</Label>
+                          <Input type="number" value={emergencyData.pulse || ''} onChange={(e) => setEmergencyData(prev => ({ ...prev, pulse: e.target.value }))} placeholder="72" />
+                        </div>
+                        <div className="form-group">
+                          <Label className="form-label text-xs">Temp (°F)</Label>
+                          <Input value={emergencyData.temperature || ''} onChange={(e) => setEmergencyData(prev => ({ ...prev, temperature: e.target.value }))} placeholder="98.6" />
+                        </div>
+                        <div className="form-group">
+                          <Label className="form-label text-xs">SpO2 (%)</Label>
+                          <Input type="number" value={emergencyData.spo2 || ''} onChange={(e) => setEmergencyData(prev => ({ ...prev, spo2: e.target.value }))} placeholder="98" />
+                        </div>
+                        <div className="form-group">
+                          <Label className="form-label text-xs">Weight (kg)</Label>
+                          <Input value={emergencyData.weight || ''} onChange={(e) => setEmergencyData(prev => ({ ...prev, weight: e.target.value }))} placeholder="70" />
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="flex items-center gap-3">
                       <Checkbox
                         id="ambulance"
