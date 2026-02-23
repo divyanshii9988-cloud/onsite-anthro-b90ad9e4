@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,11 +28,11 @@ export default function Employees() {
     mobile: '',
     companyName: '',
     department: '',
-    designation: '',
     age: '',
     gender: '' as 'male' | 'female' | 'other' | '',
     bloodGroup: '',
   });
+  const [consentChecked, setConsentChecked] = useState(false);
 
   // First filter by date range, then by search query
   const dateFilteredEmployees = filterByDateRange(employees, dateRange, 'registeredAt');
@@ -50,6 +51,11 @@ export default function Employees() {
       return;
     }
 
+    if (!consentChecked) {
+      toast.error('Employee must consent to medical record data storage');
+      return;
+    }
+
     const success = addEmployee({
       employeeId: formData.employeeId,
       name: formData.name,
@@ -57,7 +63,6 @@ export default function Employees() {
       mobile: formData.mobile,
       companyName: formData.companyName,
       department: formData.department || undefined,
-      designation: formData.designation || undefined,
       age: formData.age ? parseInt(formData.age) : undefined,
       gender: formData.gender || undefined,
       bloodGroup: formData.bloodGroup || undefined,
@@ -67,9 +72,10 @@ export default function Employees() {
 
     toast.success('Employee registered successfully!');
     setIsDialogOpen(false);
+    setConsentChecked(false);
     setFormData({
       employeeId: '', name: '', email: '', mobile: '', companyName: '',
-      department: '', designation: '', age: '', gender: '', bloodGroup: ''
+      department: '', age: '', gender: '', bloodGroup: ''
     });
   };
 
@@ -180,14 +186,6 @@ export default function Employees() {
                   />
                 </div>
                 <div className="form-group">
-                  <Label className="form-label">Designation</Label>
-                  <Input
-                    value={formData.designation}
-                    onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
-                    placeholder="e.g., Senior Developer"
-                  />
-                </div>
-                <div className="form-group">
                   <Label className="form-label">Age</Label>
                   <Input
                     type="number"
@@ -221,6 +219,16 @@ export default function Employees() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="col-span-2 flex items-start gap-3 p-4 bg-muted/50 rounded-lg border">
+                  <Checkbox
+                    id="consent"
+                    checked={consentChecked}
+                    onCheckedChange={(checked) => setConsentChecked(!!checked)}
+                  />
+                  <Label htmlFor="consent" className="text-sm cursor-pointer leading-relaxed">
+                    I consent to the storage and processing of my medical record data for the purpose of occupational health management. *
+                  </Label>
                 </div>
                 <div className="col-span-2 flex justify-end gap-3 pt-4">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>

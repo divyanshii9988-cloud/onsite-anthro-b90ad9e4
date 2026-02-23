@@ -95,7 +95,7 @@ export interface BiowWaste {
   id: string;
   wasteType: 'yellow' | 'red' | 'blue' | 'white' | 'black';
   quantity: number;
-  unit: 'kg' | 'bags';
+  unit: 'kg' | 'grams' | 'bags';
   collectedBy: string;
   collectedAt: Date;
   disposedAt?: Date;
@@ -115,7 +115,7 @@ export interface AmbulanceMovement {
   departureTime: Date;
   arrivalTime?: Date;
   emergencyId?: string;
-  remarks?: string;
+  reasonOfTransfer: string;
   locationId: string;
   corporateId?: string;
 }
