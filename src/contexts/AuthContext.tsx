@@ -1,16 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Corporate, AdminUser } from '@/types/clinic';
-import { auth, db, getSecondaryAuth } from '@/lib/firebase';
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-  createUserWithEmailAndPassword,
-} from 'firebase/auth';
-import {
-  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot,
-  Timestamp, serverTimestamp,
-} from 'firebase/firestore';
+import { supabase } from '@/integrations/supabase/client';
+import { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -39,119 +30,91 @@ const allCorporates: Corporate[] = [
   { id: 'corp5', name: 'HCL Technologies', location: 'Noida', address: 'Sector 126, Noida' },
 ];
 
-// Helper to convert Firestore Timestamps to Dates
-function convertTimestamps(data: Record<string, any>): Record<string, any> {
-  const result = { ...data };
-  for (const key of Object.keys(result)) {
-    if (result[key] && typeof result[key].toDate === 'function') {
-      result[key] = result[key].toDate();
-    }
-  }
-  return result;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [selectedCorporate, setSelectedCorporate] = useState<Corporate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
 
-  // Listen to admin users from Firestore
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const users = snapshot.docs.map(d => {
-        const data = convertTimestamps(d.data());
-        return {
-          id: d.id,
-          ...data,
-          assignedCorporates: data.corporates || data.assignedCorporates || [],
-        } as AdminUser;
-      });
-      setAdminUsers(users);
-    });
-    return unsubscribe;
-  }, []);
-
-  // Seed initial admin if no users exist in Firestore
-  useEffect(() => {
-    async function seedAdmin() {
-      try {
-        const snapshot = await getDocs(collection(db, 'users'));
-        if (snapshot.empty) {
-          const secondaryAuth = getSecondaryAuth();
-          const cred = await createUserWithEmailAndPassword(
-            secondaryAuth,
-            'admin@truworth.com',
-            'admin123'
-          );
-          await setDoc(doc(db, 'users', cred.user.uid), {
-            uid: cred.user.uid,
-            firstName: 'Admin',
-            lastName: 'User',
-            email: 'admin@truworth.com',
-            mobile: '9876543212',
-            role: 'ADMIN',
-            isSuperAdmin: true,
-            corporates: [],
-            location: '',
-            createdAt: serverTimestamp(),
-          });
-          await signOut(secondaryAuth);
-          console.log('Initial admin account seeded successfully');
-        }
-      } catch (err) {
-        console.error('Seed admin error:', err);
-      }
+  // Fetch admin users from profiles table
+  const fetchAdminUsers = async () => {
+    const { data } = await supabase.from('profiles').select('*');
+    if (data) {
+      setAdminUsers(data.map(d => ({
+        id: d.id,
+        firstName: d.full_name?.split(' ')[0] || '',
+        lastName: d.full_name?.split(' ').slice(1).join(' ') || '',
+        email: '', // profiles table doesn't store email
+        mobile: '',
+        role: (d.role?.toUpperCase() || 'NURSE') as 'ADMIN' | 'DOCTOR' | 'NURSE',
+        isSuperAdmin: d.role?.toLowerCase() === 'admin',
+        assignedCorporates: [],
+        location: '',
+        createdAt: d.created_at ? new Date(d.created_at) : new Date(),
+      })));
     }
-    seedAdmin();
-  }, []);
+  };
 
-  // Firebase auth state listener
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            const userRole = data.role.toLowerCase() as 'doctor' | 'nurse' | 'admin';
-            const loggedInUser: User = {
-              id: firebaseUser.uid,
-              email: data.email,
-              name: `${data.firstName} ${data.lastName}`,
-              role: userRole,
-              locationId: data.location || '',
-              locationName: data.location || '',
-              assignedCorporates: data.corporates || data.assignedCorporates || [],
-            };
-            setUser(loggedInUser);
+  // Load user profile from profiles table
+  const loadUserProfile = async (sessionUserId: string, sessionEmail: string) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', sessionUserId)
+      .single();
 
-            // Restore selected corporate
-            const storedCorp = localStorage.getItem('clinicSelectedCorporate');
-            if (storedCorp) {
-              setSelectedCorporate(JSON.parse(storedCorp));
-            } else if (userRole !== 'admin' && (data.corporates || data.assignedCorporates)?.length === 1) {
-              const corp = allCorporates.find(c => c.id === (data.corporates || data.assignedCorporates)[0]);
-              if (corp) {
-                setSelectedCorporate(corp);
-                localStorage.setItem('clinicSelectedCorporate', JSON.stringify(corp));
-              }
-            }
-          } else {
-            // User in Auth but not Firestore → sign out
-            await signOut(auth);
-          }
-        } catch (err) {
-          console.error('Error loading user data:', err);
-          await signOut(auth);
-        }
-      } else {
-        setUser(null);
-        setSelectedCorporate(null);
+    if (profile) {
+      const userRole = (profile.role?.toLowerCase() || 'nurse') as 'doctor' | 'nurse' | 'admin';
+      const loggedInUser: User = {
+        id: sessionUserId,
+        email: sessionEmail,
+        name: profile.full_name || sessionEmail,
+        role: userRole,
+        locationId: '',
+        locationName: '',
+        assignedCorporates: [],
+      };
+      setUser(loggedInUser);
+
+      // Restore selected corporate
+      const storedCorp = localStorage.getItem('clinicSelectedCorporate');
+      if (storedCorp) {
+        setSelectedCorporate(JSON.parse(storedCorp));
       }
-      setIsLoading(false);
+    } else {
+      setUser(null);
+    }
+  };
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          // Use setTimeout to avoid potential deadlock with Supabase client
+          setTimeout(() => {
+            loadUserProfile(session.user.id, session.user.email || '');
+            fetchAdminUsers();
+          }, 0);
+        } else {
+          setUser(null);
+          setSelectedCorporate(null);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    // THEN check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUserProfile(session.user.id, session.user.email || '');
+        fetchAdminUsers();
+      } else {
+        setIsLoading(false);
+      }
     });
-    return unsubscribe;
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const assignedCorporates = user?.role === 'admin'
@@ -160,21 +123,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return false;
       return true;
     } catch {
       return false;
     }
   };
 
-  const logout = () => {
-    signOut(auth);
+  const logout = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem('clinicSelectedCorporate');
   };
 
   const selectCorporate = (corporateId: string) => {
     if (!corporateId) {
-      // Admin clearing filter
       setSelectedCorporate(null);
       localStorage.removeItem('clinicSelectedCorporate');
       return;
@@ -187,37 +150,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const addAdminUser = async (userData: Omit<AdminUser, 'id' | 'createdAt'>) => {
-    if (!userData.password) throw new Error('Password is required');
-    const secondaryAuth = getSecondaryAuth();
-    const cred = await createUserWithEmailAndPassword(
-      secondaryAuth,
-      userData.email,
-      userData.password
-    );
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      uid: cred.user.uid,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      email: userData.email,
-      mobile: userData.mobile,
-      role: userData.role,
-      isSuperAdmin: userData.isSuperAdmin,
-      corporates: userData.assignedCorporates,
-      location: userData.location || '',
-      createdAt: serverTimestamp(),
-    });
-    await signOut(secondaryAuth);
+    // Creating users via Supabase Auth requires admin/service role.
+    // For now, we create a profile entry. In production, use an edge function.
+    throw new Error('User creation requires a server-side edge function with service role key');
   };
 
   const updateAdminUser = async (id: string, updates: Partial<AdminUser>) => {
-    const { password, id: _, createdAt, ...firestoreUpdates } = updates as any;
-    await updateDoc(doc(db, 'users', id), firestoreUpdates);
-    // Note: Password update requires Firebase Admin SDK (server-side)
+    const fullName = updates.firstName && updates.lastName
+      ? `${updates.firstName} ${updates.lastName}`
+      : undefined;
+    await supabase.from('profiles').update({
+      ...(fullName && { full_name: fullName }),
+      ...(updates.role && { role: updates.role.toLowerCase() }),
+    }).eq('id', id);
+    await fetchAdminUsers();
   };
 
   const deleteAdminUser = async (id: string) => {
-    await deleteDoc(doc(db, 'users', id));
-    // Note: Firebase Auth account remains but user can't access app without Firestore doc
+    await supabase.from('profiles').delete().eq('id', id);
+    await fetchAdminUsers();
   };
 
   return (

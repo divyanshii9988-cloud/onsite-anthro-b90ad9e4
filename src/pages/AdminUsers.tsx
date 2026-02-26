@@ -256,7 +256,7 @@ export default function AdminUsers() {
           </div>
           <div className="flex items-center gap-4">
             <Label className="w-32 text-right text-muted-foreground shrink-0">Password {viewMode === 'create' ? '*' : ''}</Label>
-            <Input type="password" value={formData.password} onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))} placeholder={viewMode === 'edit' ? 'Cannot change (Firebase)' : 'Min 6 characters'} className="flex-1" required={viewMode === 'create'} disabled={viewMode === 'edit'} />
+            <Input type="password" value={formData.password} onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))} placeholder={viewMode === 'edit' ? 'Cannot change here' : 'Min 6 characters'} className="flex-1" required={viewMode === 'create'} disabled={viewMode === 'edit'} />
           </div>
           <div className="flex items-center gap-4">
             <Label className="w-32 text-right text-muted-foreground shrink-0">Mobile</Label>

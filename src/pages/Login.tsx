@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,7 +27,24 @@ export default function Login() {
     try {
       const success = await login(email, password);
       if (success) {
-        navigate('/dashboard');
+        // Fetch role from profiles to decide redirect
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+          const role = profile?.role?.toLowerCase();
+          if (role === 'admin') {
+            navigate('/dashboard');
+          } else {
+            navigate('/walk-ins');
+          }
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         setError('Invalid email or password. Please try again.');
       }
@@ -124,12 +142,11 @@ export default function Login() {
               </Button>
             </form>
 
-            {/* Default admin info */}
+            {/* Info */}
             <div className="mt-6 p-4 bg-secondary/50 rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Default Admin (first-time setup):</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Login with your Supabase Auth credentials</p>
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p><strong>Admin:</strong> admin@truworth.com / admin123</p>
-                <p className="text-xs mt-2 italic">After login, create Doctor & Nurse accounts from Manage Users.</p>
+                <p>Contact your admin to get your account credentials.</p>
               </div>
             </div>
           </CardContent>
