@@ -102,6 +102,103 @@ export type Database = {
           },
         ]
       }
+      corporate_locations: {
+        Row: {
+          address: string | null
+          city: string | null
+          corporate_id: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          location_name: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          corporate_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_name: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          corporate_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corporate_locations_corporate_id_fkey"
+            columns: ["corporate_id"]
+            isOneToOne: false
+            referencedRelation: "corporates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      corporates: {
+        Row: {
+          address: string | null
+          city: string | null
+          contact_email: string | null
+          contact_person: string | null
+          contact_phone: string | null
+          created_at: string | null
+          created_by: string | null
+          email_domain: string | null
+          id: string
+          industry: string | null
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          state: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email_domain?: string | null
+          id?: string
+          industry?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          state?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email_domain?: string | null
+          id?: string
+          industry?: string | null
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corporates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emergency_cases: {
         Row: {
           action_taken: string | null
@@ -156,12 +253,14 @@ export type Database = {
           company_name: string
           consent_given: boolean | null
           consent_timestamp: string | null
+          corporate_id: string | null
           created_at: string | null
           department: string | null
           email: string
           employee_id: string
           full_name: string
           id: string
+          location_id: string | null
           mobile: string
         }
         Insert: {
@@ -170,12 +269,14 @@ export type Database = {
           company_name: string
           consent_given?: boolean | null
           consent_timestamp?: string | null
+          corporate_id?: string | null
           created_at?: string | null
           department?: string | null
           email: string
           employee_id: string
           full_name: string
           id?: string
+          location_id?: string | null
           mobile: string
         }
         Update: {
@@ -184,15 +285,32 @@ export type Database = {
           company_name?: string
           consent_given?: boolean | null
           consent_timestamp?: string | null
+          corporate_id?: string | null
           created_at?: string | null
           department?: string | null
           email?: string
           employee_id?: string
           full_name?: string
           id?: string
+          location_id?: string | null
           mobile?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "employees_corporate_id_fkey"
+            columns: ["corporate_id"]
+            isOneToOne: false
+            referencedRelation: "corporates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "corporate_locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       medicine_dispensation: {
         Row: {
@@ -353,26 +471,73 @@ export type Database = {
           },
         ]
       }
+      profile_corporates: {
+        Row: {
+          corporate_id: string | null
+          created_at: string | null
+          id: string
+          profile_id: string | null
+        }
+        Insert: {
+          corporate_id?: string | null
+          created_at?: string | null
+          id?: string
+          profile_id?: string | null
+        }
+        Update: {
+          corporate_id?: string | null
+          created_at?: string | null
+          id?: string
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_corporates_corporate_id_fkey"
+            columns: ["corporate_id"]
+            isOneToOne: false
+            referencedRelation: "corporates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_corporates_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
           full_name: string | null
           id: string
+          location_id: string | null
           role: string | null
         }
         Insert: {
           created_at?: string | null
           full_name?: string | null
           id: string
+          location_id?: string | null
           role?: string | null
         }
         Update: {
           created_at?: string | null
           full_name?: string | null
           id?: string
+          location_id?: string | null
           role?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "corporate_locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       specialist_consultations: {
         Row: {
@@ -433,12 +598,14 @@ export type Database = {
           bp: string | null
           chief_complaint: string | null
           consultation_type: string | null
+          corporate_id: string | null
           created_at: string | null
           created_by: string | null
           diagnosis: string | null
           employee_id: string | null
           id: string
           is_emergency: boolean | null
+          location_id: string | null
           pulse: number | null
           spo2: number | null
           temp: number | null
@@ -448,12 +615,14 @@ export type Database = {
           bp?: string | null
           chief_complaint?: string | null
           consultation_type?: string | null
+          corporate_id?: string | null
           created_at?: string | null
           created_by?: string | null
           diagnosis?: string | null
           employee_id?: string | null
           id?: string
           is_emergency?: boolean | null
+          location_id?: string | null
           pulse?: number | null
           spo2?: number | null
           temp?: number | null
@@ -463,18 +632,27 @@ export type Database = {
           bp?: string | null
           chief_complaint?: string | null
           consultation_type?: string | null
+          corporate_id?: string | null
           created_at?: string | null
           created_by?: string | null
           diagnosis?: string | null
           employee_id?: string | null
           id?: string
           is_emergency?: boolean | null
+          location_id?: string | null
           pulse?: number | null
           spo2?: number | null
           temp?: number | null
           weight?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "walkin_consultations_corporate_id_fkey"
+            columns: ["corporate_id"]
+            isOneToOne: false
+            referencedRelation: "corporates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "walkin_consultations_created_by_fkey"
             columns: ["created_by"]
@@ -487,6 +665,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "walkin_consultations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "corporate_locations"
             referencedColumns: ["id"]
           },
         ]

@@ -14,7 +14,8 @@ export type Permission =
   | 'dispense_medicine'
   | 'log_biowaste'
   | 'log_ambulance'
-  | 'schedule_specialist';
+  | 'schedule_specialist'
+  | 'manage_corporates';
 
 const rolePermissions: Record<UserRole, Permission[]> = {
   nurse: [
@@ -50,6 +51,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     'create_users',
     'download_mis',
     'view_all_corporates',
+    'manage_corporates',
   ],
 };
 

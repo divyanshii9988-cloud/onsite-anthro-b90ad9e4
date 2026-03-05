@@ -19,6 +19,7 @@ import Ambulance from "./pages/Ambulance";
 import Specialist from "./pages/Specialist";
 import Prescriptions from "./pages/Prescriptions";
 import AdminUsers from "./pages/AdminUsers";
+import ManageCorporates from "./pages/ManageCorporates";
 import EmployeeTimeline from "./pages/EmployeeTimeline";
 import NotFound from "./pages/NotFound";
 
@@ -63,6 +64,7 @@ function AppRoutes() {
       <Route path="/prescriptions" element={<ProtectedRoute><Prescriptions /></ProtectedRoute>} />
       <Route path="/employee-timeline" element={<ProtectedRoute><EmployeeTimeline /></ProtectedRoute>} />
       <Route path="/admin-users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+      <Route path="/manage-corporates" element={<ProtectedRoute><ManageCorporates /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
