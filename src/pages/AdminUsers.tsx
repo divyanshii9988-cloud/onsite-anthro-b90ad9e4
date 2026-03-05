@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Eye, Trash2, ArrowLeft, Building2, MapPin, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,20 +11,65 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/permissions';
+import { supabase } from '@/integrations/supabase/client';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
+interface SupaCorporate {
+  id: string;
+  name: string;
+  is_active: boolean | null;
+}
+
+interface SupaLocation {
+  id: string;
+  corporate_id: string | null;
+  location_name: string;
+}
+
 export default function AdminUsers() {
-  const { adminUsers, addAdminUser, updateAdminUser, deleteAdminUser, corporates, user } = useAuth();
+  const { adminUsers, addAdminUser, updateAdminUser, deleteAdminUser, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Supabase corporates & locations
+  const [supaCorporates, setSupaCorporates] = useState<SupaCorporate[]>([]);
+  const [supaLocations, setSupaLocations] = useState<SupaLocation[]>([]);
+  const [selectedCorporateId, setSelectedCorporateId] = useState<string>('');
+
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', password: '',
     mobile: '', role: '' as 'ADMIN' | 'DOCTOR' | 'NURSE' | '',
     isSuperAdmin: false, assignedCorporates: [] as string[], location: '',
   });
+
+  useEffect(() => {
+    const fetchCorps = async () => {
+      const { data } = await supabase.from('corporates').select('id, name, is_active').eq('is_active', true).order('name');
+      if (data) setSupaCorporates(data);
+    };
+    fetchCorps();
+  }, []);
+
+  // Fetch locations when a corporate is selected for assignment
+  useEffect(() => {
+    if (!selectedCorporateId) {
+      setSupaLocations([]);
+      return;
+    }
+    const fetchLocs = async () => {
+      const { data } = await supabase
+        .from('corporate_locations')
+        .select('id, corporate_id, location_name')
+        .eq('corporate_id', selectedCorporateId)
+        .eq('is_active', true)
+        .order('location_name');
+      if (data) setSupaLocations(data);
+    };
+    fetchLocs();
+  }, [selectedCorporateId]);
 
   if (!hasPermission(user?.role, 'create_users')) {
     return (
@@ -37,8 +82,6 @@ export default function AdminUsers() {
     );
   }
 
-  const locations = [...new Set(corporates.map(c => c.location))];
-
   const filteredUsers = adminUsers.filter(user =>
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
@@ -49,6 +92,7 @@ export default function AdminUsers() {
       firstName: '', lastName: '', email: '', password: '',
       mobile: '', role: '', isSuperAdmin: false, assignedCorporates: [], location: '',
     });
+    setSelectedCorporateId('');
   };
 
   const handleCreate = () => { resetForm(); setViewMode('create'); };
@@ -200,7 +244,7 @@ export default function AdminUsers() {
                     ) : user.assignedCorporates.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {user.assignedCorporates.slice(0, 2).map(id => {
-                          const corp = corporates.find(c => c.id === id);
+                          const corp = supaCorporates.find(c => c.id === id);
                           return corp ? <Badge key={id} variant="outline" className="text-xs">{corp.name}</Badge> : null;
                         })}
                         {user.assignedCorporates.length > 2 && <Badge variant="outline" className="text-xs">+{user.assignedCorporates.length - 2} more</Badge>}
@@ -275,15 +319,45 @@ export default function AdminUsers() {
           </div>
 
           {formData.role && formData.role !== 'ADMIN' && (
-            <div className="flex items-center gap-4">
-              <Label className="w-32 text-right text-muted-foreground shrink-0">Location *</Label>
-              <Select value={formData.location} onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}>
-                <SelectTrigger className="flex-1"><SelectValue placeholder="Select location" /></SelectTrigger>
-                <SelectContent>
-                  {locations.map(loc => (<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
+            <>
+              <div className="flex items-center gap-4">
+                <Label className="w-32 text-right text-muted-foreground shrink-0">Corporate *</Label>
+                <Select value={selectedCorporateId} onValueChange={(value) => {
+                  setSelectedCorporateId(value);
+                  setFormData(prev => ({ ...prev, location: '' }));
+                }}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Select corporate" /></SelectTrigger>
+                  <SelectContent>
+                    {supaCorporates.map(corp => (
+                      <SelectItem key={corp.id} value={corp.id}>{corp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-4">
+                <Label className="w-32 text-right text-muted-foreground shrink-0">Location *</Label>
+                <Select value={formData.location} onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))} disabled={!selectedCorporateId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder={
+                      !selectedCorporateId
+                        ? 'Select a corporate first'
+                        : supaLocations.length === 0
+                          ? 'No locations found for this corporate'
+                          : 'Select location'
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supaLocations.length === 0 ? (
+                      <SelectItem value="__none" disabled>No locations found for this corporate</SelectItem>
+                    ) : (
+                      supaLocations.map(loc => (
+                        <SelectItem key={loc.id} value={loc.id}>{loc.location_name}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
 
           <div className="flex items-center gap-4 col-span-1 md:col-span-2">
@@ -312,7 +386,7 @@ export default function AdminUsers() {
               <span className="text-sm text-muted-foreground">(Select at least one)</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {corporates.map((corp) => (
+              {supaCorporates.map((corp) => (
                 <label
                   key={corp.id}
                   className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
@@ -322,7 +396,6 @@ export default function AdminUsers() {
                   <Checkbox checked={formData.assignedCorporates.includes(corp.id)} onCheckedChange={() => handleCorporateToggle(corp.id)} />
                   <div>
                     <p className="font-medium text-sm">{corp.name}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="w-3 h-3" />{corp.location}</p>
                   </div>
                 </label>
               ))}
