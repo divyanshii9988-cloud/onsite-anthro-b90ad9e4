@@ -14,7 +14,8 @@ import {
   ChevronRight,
   LogOut,
   Users,
-  Clock
+  Clock,
+  Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
 
 const adminItems: NavItem[] = [
   { path: '/admin-users', label: 'Manage Users', icon: Users, permission: 'create_users' },
+  { path: '/manage-corporates', label: 'Manage Corporates', icon: Building2, permission: 'manage_corporates' },
 ];
 
 export function Sidebar() {
