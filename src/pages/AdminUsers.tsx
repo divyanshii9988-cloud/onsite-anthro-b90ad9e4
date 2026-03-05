@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Trash2, ArrowLeft, Building2, MapPin, Loader2 } from 'lucide-react';
+import { Plus, Search, Eye, Trash2, ArrowLeft, Building2, MapPin, Loader2, Check, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { hasPermission } from '@/lib/permissions';
@@ -336,26 +339,36 @@ export default function AdminUsers() {
               </div>
               <div className="flex items-center gap-4">
                 <Label className="w-32 text-right text-muted-foreground shrink-0">Location *</Label>
-                <Select value={formData.location} onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))} disabled={!selectedCorporateId}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder={
-                      !selectedCorporateId
-                        ? 'Select a corporate first'
-                        : supaLocations.length === 0
-                          ? 'No locations found for this corporate'
-                          : 'Select location'
-                    } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {supaLocations.length === 0 ? (
-                      <SelectItem value="__none" disabled>No locations found for this corporate</SelectItem>
-                    ) : (
-                      supaLocations.map(loc => (
-                        <SelectItem key={loc.id} value={loc.id}>{loc.location_name}</SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" disabled={!selectedCorporateId} className={cn("flex-1 justify-between font-normal", !formData.location && "text-muted-foreground")}>
+                      {formData.location
+                        ? supaLocations.find(l => l.id === formData.location)?.location_name ?? 'Select location'
+                        : !selectedCorporateId
+                          ? 'Select a corporate first'
+                          : supaLocations.length === 0
+                            ? 'No locations found for this corporate'
+                            : 'Search location...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Type to search city..." />
+                      <CommandList>
+                        <CommandEmpty>No locations found.</CommandEmpty>
+                        <CommandGroup>
+                          {supaLocations.map(loc => (
+                            <CommandItem key={loc.id} value={loc.location_name} onSelect={() => setFormData(prev => ({ ...prev, location: loc.id }))}>
+                              <Check className={cn("mr-2 h-4 w-4", formData.location === loc.id ? "opacity-100" : "opacity-0")} />
+                              {loc.location_name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </>
           )}
