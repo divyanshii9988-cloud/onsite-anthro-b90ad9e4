@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +60,17 @@ const INDUSTRIES = [
   'Education', 'Logistics', 'Real Estate', 'FMCG', 'Other',
 ];
 
+const INDIAN_CITIES = [
+  'Ahmedabad', 'Bangalore', 'Bhopal', 'Bhubaneswar', 'Chandigarh', 'Chennai',
+  'Coimbatore', 'Dehradun', 'Delhi', 'Faridabad', 'Ghaziabad', 'Goa',
+  'Gurugram', 'Guwahati', 'Hyderabad', 'Indore', 'Jaipur', 'Jamshedpur',
+  'Kanpur', 'Kochi', 'Kolkata', 'Lucknow', 'Ludhiana', 'Madurai',
+  'Mangalore', 'Meerut', 'Mumbai', 'Mysore', 'Nagpur', 'Nashik',
+  'Navi Mumbai', 'Noida', 'Patna', 'Pune', 'Raipur', 'Rajkot',
+  'Ranchi', 'Surat', 'Thane', 'Thiruvananthapuram', 'Udaipur',
+  'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam',
+];
+
 const emptyCorporate = {
   name: '',
   industry: '',
@@ -81,10 +92,20 @@ export default function ManageCorporates() {
   const [corpForm, setCorpForm] = useState(emptyCorporate);
   const [cityTags, setCityTags] = useState<string[]>([]);
   const [cityInput, setCityInput] = useState('');
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cityInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  const filteredCities = useMemo(() => {
+    if (!cityInput.trim()) return [];
+    return INDIAN_CITIES.filter(
+      c => c.toLowerCase().includes(cityInput.toLowerCase()) && !cityTags.includes(c)
+    );
+  }, [cityInput, cityTags]);
 
   const fetchCorporates = async () => {
     const { data } = await supabase.from('corporates').select('*').order('name');
@@ -151,7 +172,20 @@ export default function ManageCorporates() {
         setCityTags(prev => [...prev, city]);
       }
       setCityInput('');
+      setShowCitySuggestions(false);
     }
+    if (e.key === 'Escape') {
+      setShowCitySuggestions(false);
+    }
+  };
+
+  const selectCity = (city: string) => {
+    if (!cityTags.includes(city)) {
+      setCityTags(prev => [...prev, city]);
+    }
+    setCityInput('');
+    setShowCitySuggestions(false);
+    cityInputRef.current?.focus();
   };
 
   const removeCity = (city: string) => {
@@ -446,12 +480,31 @@ export default function ManageCorporates() {
                   </Badge>
                 ))}
               </div>
-              <Input
-                value={cityInput}
-                onChange={e => setCityInput(e.target.value)}
-                onKeyDown={handleCityKeyDown}
-                placeholder="Type city name and press Enter..."
-              />
+              <div className="relative">
+                <Input
+                  ref={cityInputRef}
+                  value={cityInput}
+                  onChange={e => { setCityInput(e.target.value); setShowCitySuggestions(true); }}
+                  onKeyDown={handleCityKeyDown}
+                  onFocus={() => cityInput.trim() && setShowCitySuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowCitySuggestions(false), 150)}
+                  placeholder="Type city name to search..."
+                />
+                {showCitySuggestions && filteredCities.length > 0 && (
+                  <div ref={suggestionsRef} className="absolute z-50 top-full left-0 right-0 mt-1 max-h-40 overflow-y-auto rounded-md border bg-popover shadow-md">
+                    {filteredCities.map(city => (
+                      <button
+                        key={city}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                        onMouseDown={(e) => { e.preventDefault(); selectCity(city); }}
+                      >
+                        {city}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>
