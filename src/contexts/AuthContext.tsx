@@ -36,23 +36,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
 
-  // Fetch admin users from profiles table
+  // Fetch admin users from profiles table + auth emails
   const fetchAdminUsers = async () => {
-    const { data } = await supabase.from('profiles').select('*');
-    if (data) {
-      setAdminUsers(data.map(d => ({
+    const { data: profiles } = await supabase.from('profiles').select('*');
+    if (!profiles) return;
+
+    // Fetch profile_corporates for assignments
+    const { data: profileCorps } = await supabase.from('profile_corporates').select('profile_id, corporate_id');
+
+    const users: AdminUser[] = profiles.map(d => {
+      const assignments = profileCorps?.filter(pc => pc.profile_id === d.id) || [];
+      return {
         id: d.id,
         firstName: d.full_name?.split(' ')[0] || '',
         lastName: d.full_name?.split(' ').slice(1).join(' ') || '',
-        email: '', // profiles table doesn't store email
+        email: '',
         mobile: '',
         role: (d.role?.toUpperCase() || 'NURSE') as 'ADMIN' | 'DOCTOR' | 'NURSE',
         isSuperAdmin: d.role?.toLowerCase() === 'admin',
-        assignedCorporates: [],
-        location: '',
+        assignedCorporates: assignments.map(a => a.corporate_id).filter(Boolean) as string[],
+        location: d.location_id || '',
         createdAt: d.created_at ? new Date(d.created_at) : new Date(),
-      })));
-    }
+      };
+    });
+    setAdminUsers(users);
   };
 
   // Load user profile from profiles table
@@ -87,11 +94,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          // Use setTimeout to avoid potential deadlock with Supabase client
           setTimeout(() => {
             loadUserProfile(session.user.id, session.user.email || '');
             fetchAdminUsers();
@@ -104,7 +109,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         loadUserProfile(session.user.id, session.user.email || '');
@@ -150,9 +154,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const addAdminUser = async (userData: Omit<AdminUser, 'id' | 'createdAt'>) => {
-    // Creating users via Supabase Auth requires admin/service role.
-    // For now, we create a profile entry. In production, use an edge function.
-    throw new Error('User creation requires a server-side edge function with service role key');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+
+    const response = await supabase.functions.invoke('create-user', {
+      body: {
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        password: userData.password,
+        mobile: userData.mobile,
+        role: userData.role,
+        corporateAssignments: userData.corporateAssignments || [],
+      },
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message || 'Failed to create user');
+    }
+
+    const result = response.data;
+    if (result?.error) {
+      throw new Error(result.error);
+    }
+
+    await fetchAdminUsers();
   };
 
   const updateAdminUser = async (id: string, updates: Partial<AdminUser>) => {

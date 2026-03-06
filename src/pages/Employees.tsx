@@ -43,7 +43,7 @@ export default function Employees() {
     emp.mobile.includes(searchQuery)
   ) : dateFilteredEmployees;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.employeeId || !formData.name || !formData.email || !formData.mobile || !formData.companyName) {
@@ -56,7 +56,7 @@ export default function Employees() {
       return;
     }
 
-    const success = addEmployee({
+    const success = await addEmployee({
       employeeId: formData.employeeId,
       name: formData.name,
       email: formData.email,
@@ -80,27 +80,36 @@ export default function Employees() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Employee ID', 'Name', 'Company', 'Email', 'Mobile', 'Department', 'Designation', 'Age', 'Gender', 'Blood Group', 'Registered At'];
-    const data = filteredEmployees.map(emp => [
+    const title = 'Employee Registration Report';
+    const period = `Report Period: ${dateRange.label}`;
+    const generated = `Generated On: ${new Date().toLocaleString('en-IN')}`;
+    const summary = `Total Employees: ${filteredEmployees.length}`;
+    
+    const headers = ['S.No', 'Employee ID', 'Full Name', 'Company', 'Email', 'Mobile', 'Department', 'Age', 'Gender', 'Blood Group', 'Registered Date'];
+    const data = filteredEmployees.map((emp, i) => [
+      i + 1,
       emp.employeeId,
       emp.name,
       emp.companyName || '-',
       emp.email,
       emp.mobile,
       emp.department || '-',
-      emp.designation || '-',
       emp.age?.toString() || '-',
       emp.gender || '-',
       emp.bloodGroup || '-',
-      new Date(emp.registeredAt).toLocaleDateString()
+      new Date(emp.registeredAt).toLocaleDateString('en-IN')
     ]);
     
-    const csv = [headers, ...data].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csvRows = [
+      [title], [period], [generated], [summary], [],
+      headers, ...data
+    ];
+    const csv = csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `employees-${dateRange.label.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `Employee-Report-${dateRange.label.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 

@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 interface DataContextType {
   employees: Employee[];
-  addEmployee: (employee: Omit<Employee, 'id' | 'registeredAt'>) => boolean;
+  addEmployee: (employee: Omit<Employee, 'id' | 'registeredAt'>) => Promise<boolean>;
   searchEmployees: (query: string) => Employee[];
   getEmployee: (id: string) => Employee | undefined;
   walkIns: WalkIn[];
@@ -208,10 +208,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const prescriptions = allPrescriptions;
 
   // ─── Employees ─────────────────────────────────────────
-  const addEmployee = (employee: Omit<Employee, 'id' | 'registeredAt'>): boolean => {
+  const addEmployee = async (employee: Omit<Employee, 'id' | 'registeredAt'>): Promise<boolean> => {
     if (!hasPermission(userRole, 'register_employee')) { toast.error('Access Denied'); return false; }
 
-    supabase.from('employees').insert({
+    const { error } = await supabase.from('employees').insert({
       employee_id: employee.employeeId,
       full_name: employee.name,
       email: employee.email,
@@ -222,10 +222,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       blood_group: employee.bloodGroup || null,
       consent_given: true,
       consent_timestamp: new Date().toISOString(),
-    }).then(({ error }) => {
-      if (error) { toast.error('Failed to save employee: ' + error.message); return; }
-      fetchAll();
     });
+
+    if (error) {
+      toast.error('Failed to save employee: ' + error.message);
+      return false;
+    }
+
+    await fetchAll();
     return true;
   };
 
@@ -248,19 +252,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const { data: session } = await supabase.auth.getSession();
     const userId = session?.session?.user?.id || null;
 
-    const { data: walkinData, error } = await supabase.from('walkin_consultations').insert({
+    const insertPayload: any = {
       employee_id: walkIn.employeeId || null,
       consultation_type: walkIn.consultationType,
       chief_complaint: walkIn.chiefComplaint,
       diagnosis: walkIn.diagnosis || null,
       bp: walkIn.vitals?.bp || null,
-      pulse: walkIn.vitals?.pulse || null,
-      temp: walkIn.vitals?.temperature || null,
-      weight: walkIn.vitals?.weight || null,
-      spo2: walkIn.vitals?.spo2 || null,
+      pulse: walkIn.vitals?.pulse && !isNaN(Number(walkIn.vitals.pulse)) ? Number(walkIn.vitals.pulse) : null,
+      temp: walkIn.vitals?.temperature && !isNaN(Number(walkIn.vitals.temperature)) ? Number(walkIn.vitals.temperature) : null,
+      weight: walkIn.vitals?.weight && !isNaN(Number(walkIn.vitals.weight)) ? Number(walkIn.vitals.weight) : null,
+      spo2: walkIn.vitals?.spo2 && !isNaN(Number(walkIn.vitals.spo2)) ? Number(walkIn.vitals.spo2) : null,
       is_emergency: walkIn.isEmergency || false,
       created_by: userId,
-    }).select().single();
+    };
+
+    const { data: walkinData, error } = await supabase.from('walkin_consultations').insert(insertPayload).select().single();
 
     if (error) { toast.error('Failed to save walk-in: ' + error.message); return false; }
 

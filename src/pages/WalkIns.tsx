@@ -219,31 +219,46 @@ export default function WalkIns() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Time', 'Employee', 'Emp ID', 'Type', 'Is Emergency', 'Complaint/Incident', 'Diagnosis/Description', 'Doctor/Nurse', 'Severity', 'Case Status', 'Ambulance'];
-    const data = filteredWalkIns.map(w => {
+    const title = `Walk-in & Emergency Report`;
+    const period = `Report Period: ${dateRange.label}`;
+    const generated = `Generated On: ${new Date().toLocaleString('en-IN')}`;
+    const summary = `Total Entries: ${filteredWalkIns.length} | Walk-ins: ${walkInCount} | Emergencies: ${emergencyCount}`;
+    
+    const headers = ['S.No', 'Date', 'Time', 'Employee ID', 'Employee Name', 'Type', 'Is Emergency', 'Complaint/Incident', 'Diagnosis/Description', 'BP', 'Pulse', 'Temp', 'SpO2', 'Weight', 'Attended By', 'Severity', 'Case Status', 'Ambulance Used'];
+    const data = filteredWalkIns.map((w, i) => {
       const emp = employees.find(e => e.id === w.employeeId);
       return [
-        new Date(w.createdAt).toLocaleDateString(),
-        new Date(w.createdAt).toLocaleTimeString(),
-        w.employeeName,
+        i + 1,
+        new Date(w.createdAt).toLocaleDateString('en-IN'),
+        new Date(w.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
         emp?.employeeId || '-',
-        w.consultationType,
+        w.employeeName || '-',
+        w.consultationType || '-',
         w.isEmergency ? 'Yes' : 'No',
-        w.isEmergency ? w.incidentType : w.chiefComplaint,
-        w.isEmergency ? w.description : (w.diagnosis || '-'),
+        w.isEmergency ? (w.incidentType || '-') : (w.chiefComplaint || '-'),
+        w.isEmergency ? (w.description || '-') : (w.diagnosis || '-'),
+        w.vitals?.bp || '-',
+        w.vitals?.pulse || '-',
+        w.vitals?.temperature || '-',
+        w.vitals?.spo2 || '-',
+        w.vitals?.weight || '-',
         w.doctorName || '-',
         w.severity || '-',
         w.caseStatus || '-',
-        w.ambulanceUsed ? 'Yes' : 'No'
+        w.ambulanceUsed ? 'Yes' : 'No',
       ];
     });
     
-    const csv = [headers, ...data].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csvRows = [
+      [title], [period], [generated], [summary], [],
+      headers, ...data
+    ];
+    const csv = csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `walk-ins-${dateRange.label.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `Walk-in-Report-${dateRange.label.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
@@ -510,12 +525,14 @@ export default function WalkIns() {
                       </div>
                       <div className="form-group">
                         <Label className="form-label">Chief Complaint *</Label>
-                        <Input
-                          value={formData.chiefComplaint}
-                          onChange={(e) => setFormData(prev => ({ ...prev, chiefComplaint: e.target.value }))}
-                          placeholder="e.g., Headache, Fever"
-                          required
-                        />
+                        <Select value={formData.chiefComplaint} onValueChange={(value) => setFormData(prev => ({ ...prev, chiefComplaint: value }))}>
+                          <SelectTrigger><SelectValue placeholder="Select chief complaint" /></SelectTrigger>
+                          <SelectContent>
+                            {['Headache', 'Fever', 'Body Pain', 'Cough & Cold', 'Throat Infection', 'Stomach Ache', 'Acidity / Gas', 'Diarrhea', 'Nausea / Vomiting', 'Dizziness', 'Back Pain', 'Joint Pain', 'Allergy / Skin Rash', 'Eye Irritation', 'Ear Pain', 'Chest Pain', 'Breathing Difficulty', 'Toothache', 'Menstrual Cramps', 'Fatigue / Weakness', 'High BP', 'Low BP', 'Diabetes Related', 'Insect Bite', 'Minor Injury / Cut', 'Burns', 'Sprain / Strain', 'Food Poisoning', 'Dehydration', 'Anxiety / Stress', 'Other'].map(complaint => (
+                              <SelectItem key={complaint} value={complaint}>{complaint}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 

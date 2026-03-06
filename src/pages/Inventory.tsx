@@ -75,19 +75,28 @@ export default function Inventory() {
   };
 
   const exportToCSV = () => {
-    const headers = ['SKU', 'Name', 'Brand', 'Category', 'Quantity', 'Unit', 'Min Stock', 'Expiry Date', 'Status'];
-    const data = medicines.map(med => [
-      med.sku, med.name, med.brand, med.category,
+    const title = 'Medicine Inventory Report';
+    const generated = `Generated On: ${new Date().toLocaleString('en-IN')}`;
+    const summary = `Total Items: ${medicines.length} | Low Stock: ${lowStockCount} | Expired: ${expiredMedicines.length}`;
+    
+    const headers = ['S.No', 'SKU', 'Medicine Name', 'Brand', 'Category', 'Current Qty', 'Unit', 'Min Stock Level', 'Expiry Date', 'Status'];
+    const data = medicines.map((med, i) => [
+      i + 1, med.sku, med.name, med.brand, med.category,
       med.quantity.toString(), med.unit, med.minStock.toString(),
-      med.expiryDate ? new Date(med.expiryDate).toLocaleDateString() : '-',
+      med.expiryDate ? new Date(med.expiryDate).toLocaleDateString('en-IN') : '-',
       med.quantity <= med.minStock ? 'Low Stock' : (med.expiryDate && new Date(med.expiryDate) < now ? 'Expired' : 'In Stock')
     ]);
-    const csv = [headers, ...data].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    
+    const csvRows = [
+      [title], [generated], [summary], [],
+      headers, ...data
+    ];
+    const csv = csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `inventory-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `Inventory-Report-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
   };
 
@@ -163,18 +172,7 @@ export default function Inventory() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <Card className="stat-card">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Items</p>
-                <p className="text-3xl font-bold text-foreground">{medicines.length}</p>
-              </div>
-              <div className="bg-primary p-3 rounded-xl"><Package className="w-6 h-6 text-white" /></div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <Card className="stat-card">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
