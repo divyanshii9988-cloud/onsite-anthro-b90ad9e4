@@ -191,11 +191,12 @@ export interface AdminUser {
   firstName: string;
   lastName: string;
   email: string;
-  password?: string; // Only used during creation, not stored in Firestore
+  password?: string;
   mobile: string;
   role: 'ADMIN' | 'DOCTOR' | 'NURSE';
   isSuperAdmin: boolean;
   assignedCorporates: string[];
   location?: string;
+  corporateAssignments?: { corporateId: string; locationId: string }[];
   createdAt: Date;
 }

@@ -23,13 +23,17 @@ export default function BioWaste() {
 
   const filteredBioWaste = filterByDateRange(bioWaste, dateRange, 'collectedAt');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.wasteType || !formData.quantity || !formData.collectedBy) { toast.error('Please fill in all required fields'); return; }
-    addBioWaste({ wasteType: formData.wasteType as 'yellow' | 'red' | 'blue' | 'white' | 'black', quantity: parseFloat(formData.quantity), unit: formData.unit as any, collectedBy: formData.collectedBy, collectedAt: new Date(), remarks: formData.remarks || undefined, locationId: selectedCorporate?.id || '' });
-    toast.success('Biomedical waste log added successfully!');
-    setIsDialogOpen(false);
-    setFormData({ wasteType: '', quantity: '', unit: 'kg', collectedBy: '', remarks: '' });
+    try {
+      await addBioWaste({ wasteType: formData.wasteType as 'yellow' | 'red' | 'blue' | 'white' | 'black', quantity: parseFloat(formData.quantity), unit: formData.unit as any, collectedBy: formData.collectedBy, collectedAt: new Date(), remarks: formData.remarks || undefined, locationId: selectedCorporate?.id || '' });
+      toast.success('Biomedical waste log added successfully!');
+      setIsDialogOpen(false);
+      setFormData({ wasteType: '', quantity: '', unit: 'kg', collectedBy: '', remarks: '' });
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to add waste log');
+    }
   };
 
   const exportToCSV = () => {

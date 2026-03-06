@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Eye, Trash2, ArrowLeft, Building2, MapPin, Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, Search, Eye, Trash2, ArrowLeft, Building2, MapPin, Loader2, Check, ChevronsUpDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
@@ -30,6 +29,11 @@ interface SupaLocation {
   location_name: string;
 }
 
+interface CorporateAssignment {
+  corporateId: string;
+  locationId: string;
+}
+
 export default function AdminUsers() {
   const { adminUsers, addAdminUser, updateAdminUser, deleteAdminUser, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,16 +41,17 @@ export default function AdminUsers() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Supabase corporates & locations
+  // Supabase corporates
   const [supaCorporates, setSupaCorporates] = useState<SupaCorporate[]>([]);
-  const [supaLocations, setSupaLocations] = useState<SupaLocation[]>([]);
-  const [selectedCorporateId, setSelectedCorporateId] = useState<string>('');
+  // Location cache per corporate
+  const [locationCache, setLocationCache] = useState<Record<string, SupaLocation[]>>({});
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', password: '',
     mobile: '', role: '' as 'ADMIN' | 'DOCTOR' | 'NURSE' | '',
-    isSuperAdmin: false, assignedCorporates: [] as string[], location: '',
   });
+
+  const [corporateAssignments, setCorporateAssignments] = useState<CorporateAssignment[]>([]);
 
   useEffect(() => {
     const fetchCorps = async () => {
@@ -56,23 +61,19 @@ export default function AdminUsers() {
     fetchCorps();
   }, []);
 
-  // Fetch locations when a corporate is selected for assignment
-  useEffect(() => {
-    if (!selectedCorporateId) {
-      setSupaLocations([]);
-      return;
-    }
-    const fetchLocs = async () => {
-      const { data } = await supabase
-        .from('corporate_locations')
-        .select('id, corporate_id, location_name')
-        .eq('corporate_id', selectedCorporateId)
-        .eq('is_active', true)
-        .order('location_name');
-      if (data) setSupaLocations(data);
-    };
-    fetchLocs();
-  }, [selectedCorporateId]);
+  // Fetch locations for a corporate (with caching)
+  const fetchLocationsForCorporate = async (corporateId: string) => {
+    if (locationCache[corporateId]) return locationCache[corporateId];
+    const { data } = await supabase
+      .from('corporate_locations')
+      .select('id, corporate_id, location_name')
+      .eq('corporate_id', corporateId)
+      .eq('is_active', true)
+      .order('location_name');
+    const locs = data || [];
+    setLocationCache(prev => ({ ...prev, [corporateId]: locs }));
+    return locs;
+  };
 
   if (!hasPermission(user?.role, 'create_users')) {
     return (
@@ -93,9 +94,9 @@ export default function AdminUsers() {
   const resetForm = () => {
     setFormData({
       firstName: '', lastName: '', email: '', password: '',
-      mobile: '', role: '', isSuperAdmin: false, assignedCorporates: [], location: '',
+      mobile: '', role: '',
     });
-    setSelectedCorporateId('');
+    setCorporateAssignments([]);
   };
 
   const handleCreate = () => { resetForm(); setViewMode('create'); };
@@ -107,23 +108,39 @@ export default function AdminUsers() {
       setFormData({
         firstName: user.firstName, lastName: user.lastName,
         email: user.email, password: '', mobile: user.mobile,
-        role: user.role, isSuperAdmin: user.isSuperAdmin,
-        assignedCorporates: user.assignedCorporates,
-        location: user.location || '',
+        role: user.role,
       });
+      // Convert existing assigned corporates to assignments
+      const assignments: CorporateAssignment[] = user.assignedCorporates.map(corpId => ({
+        corporateId: corpId,
+        locationId: user.location || '',
+      }));
+      setCorporateAssignments(assignments.length > 0 ? assignments : []);
       setViewMode('edit');
     }
   };
 
   const handleBack = () => { setViewMode('list'); setSelectedUserId(null); resetForm(); };
 
-  const handleCorporateToggle = (corporateId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      assignedCorporates: prev.assignedCorporates.includes(corporateId)
-        ? prev.assignedCorporates.filter(id => id !== corporateId)
-        : [...prev.assignedCorporates, corporateId]
-    }));
+  const addAssignmentRow = () => {
+    setCorporateAssignments(prev => [...prev, { corporateId: '', locationId: '' }]);
+  };
+
+  const updateAssignment = (index: number, field: keyof CorporateAssignment, value: string) => {
+    setCorporateAssignments(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      if (field === 'corporateId') {
+        updated[index].locationId = '';
+        // Trigger location fetch
+        if (value) fetchLocationsForCorporate(value);
+      }
+      return updated;
+    });
+  };
+
+  const removeAssignment = (index: number) => {
+    setCorporateAssignments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -137,11 +154,14 @@ export default function AdminUsers() {
     if (formData.password && formData.password.length < 6) {
       toast.error('Password must be at least 6 characters'); return;
     }
-    if (formData.role !== 'ADMIN' && formData.assignedCorporates.length === 0) {
-      toast.error('Please assign at least one corporate for non-admin users'); return;
+    if (formData.role !== 'ADMIN' && corporateAssignments.length === 0) {
+      toast.error('Please add at least one corporate assignment'); return;
     }
-    if (formData.role !== 'ADMIN' && !formData.location) {
-      toast.error('Please select a location for this user'); return;
+    if (formData.role !== 'ADMIN') {
+      const incomplete = corporateAssignments.some(a => !a.corporateId || !a.locationId);
+      if (incomplete) {
+        toast.error('Please complete all corporate and location selections'); return;
+      }
     }
 
     setIsSaving(true);
@@ -152,26 +172,27 @@ export default function AdminUsers() {
           email: formData.email, password: formData.password,
           mobile: formData.mobile,
           role: formData.role as 'ADMIN' | 'DOCTOR' | 'NURSE',
-          isSuperAdmin: formData.isSuperAdmin,
-          assignedCorporates: formData.role === 'ADMIN' ? [] : formData.assignedCorporates,
-          location: formData.role === 'ADMIN' ? '' : formData.location,
-        });
+          isSuperAdmin: formData.role === 'ADMIN',
+          assignedCorporates: formData.role === 'ADMIN' ? [] : corporateAssignments.map(a => a.corporateId),
+          location: formData.role === 'ADMIN' ? '' : corporateAssignments[0]?.locationId || '',
+          corporateAssignments: formData.role === 'ADMIN' ? [] : corporateAssignments,
+        } as any);
         toast.success('User created successfully!');
       } else if (viewMode === 'edit' && selectedUserId) {
         await updateAdminUser(selectedUserId, {
           firstName: formData.firstName, lastName: formData.lastName,
           mobile: formData.mobile,
           role: formData.role as 'ADMIN' | 'DOCTOR' | 'NURSE',
-          isSuperAdmin: formData.isSuperAdmin,
-          assignedCorporates: formData.role === 'ADMIN' ? [] : formData.assignedCorporates,
-          location: formData.role === 'ADMIN' ? '' : formData.location,
+          isSuperAdmin: formData.role === 'ADMIN',
+          assignedCorporates: formData.role === 'ADMIN' ? [] : corporateAssignments.map(a => a.corporateId),
+          location: formData.role === 'ADMIN' ? '' : corporateAssignments[0]?.locationId || '',
         });
         toast.success('User updated successfully!');
       }
       handleBack();
     } catch (err: any) {
       const msg = err?.message || 'Failed to save user';
-      if (msg.includes('email-already-in-use')) {
+      if (msg.includes('email-already-in-use') || msg.includes('already been registered')) {
         toast.error('This email is already registered');
       } else {
         toast.error(msg);
@@ -182,8 +203,6 @@ export default function AdminUsers() {
   };
 
   const handleDelete = async (userId: string) => {
-    const user = adminUsers.find(u => u.id === userId);
-    if (user?.isSuperAdmin) { toast.error('Cannot delete a Super Admin user'); return; }
     try {
       await deleteAdminUser(userId);
       toast.success('User deleted successfully');
@@ -217,7 +236,6 @@ export default function AdminUsers() {
                 <TableHead className="font-semibold">Name</TableHead>
                 <TableHead className="font-semibold">Email</TableHead>
                 <TableHead className="font-semibold">Role</TableHead>
-                <TableHead className="font-semibold">Location</TableHead>
                 <TableHead className="font-semibold">Assigned Corporates</TableHead>
                 <TableHead className="font-semibold">Date</TableHead>
                 <TableHead className="text-center font-semibold">Actions</TableHead>
@@ -233,14 +251,8 @@ export default function AdminUsers() {
                       {user.firstName} {user.lastName}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span>{user.email}</span>
-                      {user.isSuperAdmin && <Badge variant="outline" className="text-xs border-primary text-primary bg-primary/5">Super Admin</Badge>}
-                    </div>
-                  </TableCell>
+                  <TableCell>{user.email}</TableCell>
                   <TableCell><Badge variant="secondary" className="font-medium">{user.role}</Badge></TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{user.location || '-'}</TableCell>
                   <TableCell className="max-w-xs">
                     {user.role === 'ADMIN' ? (
                       <span className="text-muted-foreground text-sm">All Corporates</span>
@@ -262,13 +274,13 @@ export default function AdminUsers() {
                   <TableCell>
                     <div className="flex items-center justify-center gap-2">
                       <Button variant="ghost" size="icon" title="View/Edit" onClick={() => handleEdit(user.id)}><Eye className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" title="Delete" onClick={() => handleDelete(user.id)} disabled={user.isSuperAdmin}><Trash2 className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" title="Delete" onClick={() => handleDelete(user.id)}><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
               {filteredUsers.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No users found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -321,66 +333,6 @@ export default function AdminUsers() {
             </Select>
           </div>
 
-          {formData.role && formData.role !== 'ADMIN' && (
-            <>
-              <div className="flex items-center gap-4">
-                <Label className="w-32 text-right text-muted-foreground shrink-0">Corporate *</Label>
-                <Select value={selectedCorporateId} onValueChange={(value) => {
-                  setSelectedCorporateId(value);
-                  setFormData(prev => ({ ...prev, location: '' }));
-                }}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Select corporate" /></SelectTrigger>
-                  <SelectContent>
-                    {supaCorporates.map(corp => (
-                      <SelectItem key={corp.id} value={corp.id}>{corp.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-4">
-                <Label className="w-32 text-right text-muted-foreground shrink-0">Location *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" disabled={!selectedCorporateId} className={cn("flex-1 justify-between font-normal", !formData.location && "text-muted-foreground")}>
-                      {formData.location
-                        ? supaLocations.find(l => l.id === formData.location)?.location_name ?? 'Select location'
-                        : !selectedCorporateId
-                          ? 'Select a corporate first'
-                          : supaLocations.length === 0
-                            ? 'No locations found for this corporate'
-                            : 'Search location...'}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder="Type to search city..." />
-                      <CommandList>
-                        <CommandEmpty>No locations found.</CommandEmpty>
-                        <CommandGroup>
-                          {supaLocations.map(loc => (
-                            <CommandItem key={loc.id} value={loc.location_name} onSelect={() => setFormData(prev => ({ ...prev, location: loc.id }))}>
-                              <Check className={cn("mr-2 h-4 w-4", formData.location === loc.id ? "opacity-100" : "opacity-0")} />
-                              {loc.location_name}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </>
-          )}
-
-          <div className="flex items-center gap-4 col-span-1 md:col-span-2">
-            <Label className="w-32 text-right text-muted-foreground shrink-0"></Label>
-            <div className="flex items-center gap-2">
-              <Checkbox id="superAdmin" checked={formData.isSuperAdmin} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isSuperAdmin: !!checked }))} />
-              <Label htmlFor="superAdmin" className="text-sm cursor-pointer">Is Super Admin</Label>
-            </div>
-          </div>
-
           <div className="flex items-center gap-4">
             <Label className="w-32 text-right text-muted-foreground shrink-0">User Image</Label>
             <Avatar className="w-16 h-16 bg-muted">
@@ -391,26 +343,76 @@ export default function AdminUsers() {
           </div>
         </div>
 
+        {/* Corporate + Location Assignments */}
         {formData.role && formData.role !== 'ADMIN' && (
           <div className="mt-8 pt-6 border-t">
-            <div className="flex items-center gap-2 mb-4">
-              <Building2 className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold text-foreground">Assign Corporates</h3>
-              <span className="text-sm text-muted-foreground">(Select at least one)</span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-foreground">Corporate & Location Assignments</h3>
+                <span className="text-sm text-muted-foreground">(Add at least one)</span>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addAssignmentRow} className="gap-1">
+                <Plus className="w-4 h-4" /> Add Corporate
+              </Button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {supaCorporates.map((corp) => (
-                <label
-                  key={corp.id}
-                  className={`flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors ${
-                    formData.assignedCorporates.includes(corp.id) ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
-                  }`}
-                >
-                  <Checkbox checked={formData.assignedCorporates.includes(corp.id)} onCheckedChange={() => handleCorporateToggle(corp.id)} />
-                  <div>
-                    <p className="font-medium text-sm">{corp.name}</p>
+
+            {corporateAssignments.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground border border-dashed rounded-lg">
+                <Building2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">No corporate assigned yet. Click "Add Corporate" to assign.</p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {corporateAssignments.map((assignment, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground mb-1 block">Corporate *</Label>
+                    <Select value={assignment.corporateId} onValueChange={(value) => updateAssignment(index, 'corporateId', value)}>
+                      <SelectTrigger><SelectValue placeholder="Select corporate" /></SelectTrigger>
+                      <SelectContent>
+                        {supaCorporates.map(corp => (
+                          <SelectItem key={corp.id} value={corp.id}>{corp.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                </label>
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground mb-1 block">Location *</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" disabled={!assignment.corporateId} className={cn("w-full justify-between font-normal", !assignment.locationId && "text-muted-foreground")}>
+                          {assignment.locationId
+                            ? locationCache[assignment.corporateId]?.find(l => l.id === assignment.locationId)?.location_name ?? 'Select location'
+                            : !assignment.corporateId
+                              ? 'Select corporate first'
+                              : 'Search location...'}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Type to search city..." />
+                          <CommandList>
+                            <CommandEmpty>No locations found for this corporate.</CommandEmpty>
+                            <CommandGroup>
+                              {(locationCache[assignment.corporateId] || []).map(loc => (
+                                <CommandItem key={loc.id} value={loc.location_name} onSelect={() => updateAssignment(index, 'locationId', loc.id)}>
+                                  <Check className={cn("mr-2 h-4 w-4", assignment.locationId === loc.id ? "opacity-100" : "opacity-0")} />
+                                  {loc.location_name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeAssignment(index)} className="mt-5 shrink-0">
+                    <X className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
               ))}
             </div>
           </div>

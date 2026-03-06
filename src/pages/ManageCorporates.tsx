@@ -77,7 +77,6 @@ const emptyCorporate = {
   contact_person: '',
   contact_email: '',
   contact_phone: '',
-  email_domain: '',
 };
 
 export default function ManageCorporates() {
@@ -154,7 +153,6 @@ export default function ManageCorporates() {
       contact_person: corp.contact_person || '',
       contact_email: corp.contact_email || '',
       contact_phone: corp.contact_phone || '',
-      email_domain: corp.email_domain || '',
     });
     // Load existing cities from locations
     const existingCities = (corporateLocations[corp.id] || []).map(l => l.location_name);
@@ -241,7 +239,7 @@ export default function ManageCorporates() {
         contact_person: corpForm.contact_person || null,
         contact_email: corpForm.contact_email || null,
         contact_phone: corpForm.contact_phone || null,
-        email_domain: corpForm.email_domain || null,
+        email_domain: null,
       };
 
       let corporateId: string;
@@ -417,10 +415,7 @@ export default function ManageCorporates() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label>Email Domain</Label>
-                <Input value={corpForm.email_domain} onChange={e => setCorpForm(p => ({ ...p, email_domain: e.target.value }))} placeholder="tatamotors.com" />
-              </div>
+              <div></div>
             </div>
 
             <div className="grid gap-2">
