@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchAdminUsers = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*');
     if (!profiles) return;
-    const { data: profileCorps } = await supabase.from('profile_corporates').select('profile_id, corporate_id');
+    const { data: profileCorps } = await supabase.from('profile_corporates').select('profile_id, corporate_id, location_id');
     const users: AdminUser[] = profiles.map(d => {
       const assignments = profileCorps?.filter(pc => pc.profile_id === d.id) || [];
       return {
@@ -108,6 +108,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSuperAdmin: d.role?.toLowerCase() === 'admin',
         assignedCorporates: assignments.map(a => a.corporate_id).filter(Boolean) as string[],
         location: d.location_id || '',
+        corporateAssignments: assignments.map(a => ({
+          corporateId: a.corporate_id || '',
+          locationId: a.location_id || '',
+        })),
         createdAt: d.created_at ? new Date(d.created_at) : new Date(),
       };
     });
@@ -124,14 +128,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (profile) {
       const userRole = (profile.role?.toLowerCase() || 'nurse') as 'doctor' | 'nurse' | 'admin';
-      // For non-admin, fetch their assigned corporates
+      // For non-admin, fetch their assigned corporate+location pairs
       let assignedCorporateIds: string[] = [];
+      let assignedLocationIds: string[] = [];
       if (userRole !== 'admin') {
         const { data: pc } = await supabase
           .from('profile_corporates')
-          .select('corporate_id')
+          .select('corporate_id, location_id')
           .eq('profile_id', sessionUserId);
         assignedCorporateIds = (pc || []).map(r => r.corporate_id).filter(Boolean) as string[];
+        assignedLocationIds = (pc || []).map(r => r.location_id).filter(Boolean) as string[];
       }
 
       const loggedInUser: User = {
@@ -142,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         locationId: profile.location_id || '',
         locationName: '',
         assignedCorporates: assignedCorporateIds,
+        assignedLocationIds: assignedLocationIds,
       };
       setUser(loggedInUser);
     } else {
@@ -181,10 +188,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // For admin: show all corporate-locations
-  // For staff: filter to their assigned corporates (showing all locations within those corporates)
+  // For staff: filter to their specific assigned corporate+location pairs
   const assignedCorporates = user?.role === 'admin'
     ? corporatesFromDB
-    : corporatesFromDB.filter(c => user?.assignedCorporates?.includes(c.corporateId || c.id));
+    : corporatesFromDB.filter(c => {
+        // Match by specific location if available
+        if (c.locationId && user?.assignedLocationIds?.length) {
+          return user.assignedLocationIds.includes(c.locationId);
+        }
+        // Fallback: match by corporate ID
+        return user?.assignedCorporates?.includes(c.corporateId || c.id);
+      });
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {

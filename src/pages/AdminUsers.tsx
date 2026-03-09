@@ -110,12 +110,21 @@ export default function AdminUsers() {
         email: user.email, password: '', mobile: user.mobile,
         role: user.role,
       });
-      // Convert existing assigned corporates to assignments
-      const assignments: CorporateAssignment[] = user.assignedCorporates.map(corpId => ({
-        corporateId: corpId,
-        locationId: user.location || '',
-      }));
+      // Use corporateAssignments if available (has location info)
+      const assignments: CorporateAssignment[] = user.corporateAssignments?.length
+        ? user.corporateAssignments.map(a => ({
+            corporateId: a.corporateId,
+            locationId: a.locationId,
+          }))
+        : user.assignedCorporates.map(corpId => ({
+            corporateId: corpId,
+            locationId: user.location || '',
+          }));
       setCorporateAssignments(assignments.length > 0 ? assignments : []);
+      // Pre-fetch locations for assigned corporates
+      assignments.forEach(a => {
+        if (a.corporateId) fetchLocationsForCorporate(a.corporateId);
+      });
       setViewMode('edit');
     }
   };

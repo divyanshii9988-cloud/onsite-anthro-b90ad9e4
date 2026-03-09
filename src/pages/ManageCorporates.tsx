@@ -28,7 +28,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, Building2, X, Upload, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Building2, X, Upload, Loader2, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface Corporate {
   id: string;
@@ -306,6 +317,27 @@ export default function ManageCorporates() {
     fetchCorporates();
   };
 
+  const deleteCorporate = async (corp: Corporate) => {
+    // Delete locations first, then corporate
+    const { error: locError } = await supabase
+      .from('corporate_locations')
+      .delete()
+      .eq('corporate_id', corp.id);
+    if (locError) {
+      toast({ title: 'Error', description: locError.message, variant: 'destructive' });
+      return;
+    }
+    // Delete profile_corporates assignments
+    await supabase.from('profile_corporates').delete().eq('corporate_id', corp.id);
+    const { error } = await supabase.from('corporates').delete().eq('id', corp.id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Deleted', description: `${corp.name} has been deleted` });
+    fetchCorporates();
+  };
+
   const getInitials = (name: string) => {
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   };
@@ -383,6 +415,27 @@ export default function ManageCorporates() {
                     <Button variant="ghost" size="icon" onClick={() => openEditCorporate(corp)} title="Edit">
                       <Pencil className="w-4 h-4" />
                     </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" title="Delete">
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete {corp.name}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the corporate, all its locations, and user assignments. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteCorporate(corp)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))
