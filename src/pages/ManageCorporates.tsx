@@ -317,6 +317,27 @@ export default function ManageCorporates() {
     fetchCorporates();
   };
 
+  const deleteCorporate = async (corp: Corporate) => {
+    // Delete locations first, then corporate
+    const { error: locError } = await supabase
+      .from('corporate_locations')
+      .delete()
+      .eq('corporate_id', corp.id);
+    if (locError) {
+      toast({ title: 'Error', description: locError.message, variant: 'destructive' });
+      return;
+    }
+    // Delete profile_corporates assignments
+    await supabase.from('profile_corporates').delete().eq('corporate_id', corp.id);
+    const { error } = await supabase.from('corporates').delete().eq('id', corp.id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Deleted', description: `${corp.name} has been deleted` });
+    fetchCorporates();
+  };
+
   const getInitials = (name: string) => {
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   };
