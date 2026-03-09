@@ -148,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         locationId: profile.location_id || '',
         locationName: '',
         assignedCorporates: assignedCorporateIds,
+        assignedLocationIds: assignedLocationIds,
       };
       setUser(loggedInUser);
     } else {
