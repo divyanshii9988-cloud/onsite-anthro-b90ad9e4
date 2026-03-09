@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Building2, ChevronsUpDown, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Popover,
   PopoverContent,
@@ -16,6 +17,24 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+
+function CorporateLogo({ name, logoUrl, size = 'sm' }: { name: string; logoUrl?: string; size?: 'sm' | 'md' }) {
+  const initials = name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  const sizeClass = size === 'md' ? 'h-8 w-8 text-xs' : 'h-6 w-6 text-[10px]';
+
+  return (
+    <Avatar className={cn(sizeClass, 'shrink-0')}>
+      {logoUrl && <AvatarImage src={logoUrl} alt={name} className="object-contain" />}
+      <AvatarFallback className="bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
+    </Avatar>
+  );
+}
 
 export function Header() {
   const { user, selectedCorporate, assignedCorporates, selectCorporate, corporates } = useAuth();
@@ -49,7 +68,11 @@ export function Header() {
   return (
     <header className="h-14 border-b border-border bg-card px-6 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <Building2 className="w-5 h-5 text-muted-foreground" />
+        {selectedCorporate?.logoUrl ? (
+          <CorporateLogo name={selectedCorporate.name} logoUrl={selectedCorporate.logoUrl} size="md" />
+        ) : (
+          <Building2 className="w-5 h-5 text-muted-foreground" />
+        )}
         {showCorporateSelector ? (
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
@@ -68,7 +91,7 @@ export function Header() {
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[280px] p-0" align="start">
+            <PopoverContent className="w-[300px] p-0" align="start">
               <Command>
                 <CommandInput placeholder="Search corporate..." />
                 <CommandList>
@@ -82,10 +105,11 @@ export function Header() {
                       >
                         <Check
                           className={cn(
-                            'mr-2 h-4 w-4',
+                            'mr-2 h-4 w-4 shrink-0',
                             !selectedCorporate ? 'opacity-100' : 'opacity-0'
                           )}
                         />
+                        <Building2 className="mr-2 h-5 w-5 text-muted-foreground shrink-0" />
                         <div className="flex flex-col">
                           <span className="font-medium">All Corporates</span>
                           <span className="text-xs text-muted-foreground">View data across all locations</span>
@@ -101,11 +125,12 @@ export function Header() {
                       >
                         <Check
                           className={cn(
-                            'mr-2 h-4 w-4',
+                            'mr-2 h-4 w-4 shrink-0',
                             selectedCorporate?.id === corp.id ? 'opacity-100' : 'opacity-0'
                           )}
                         />
-                        <div className="flex flex-col min-w-0">
+                        <CorporateLogo name={corp.name} logoUrl={corp.logoUrl} />
+                        <div className="flex flex-col min-w-0 ml-2">
                           <span className="font-medium truncate">{corp.name}</span>
                           {corp.location && (
                             <span className="text-xs text-muted-foreground">{corp.location}</span>
