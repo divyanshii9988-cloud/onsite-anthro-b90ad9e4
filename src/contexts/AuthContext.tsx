@@ -188,10 +188,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // For admin: show all corporate-locations
-  // For staff: filter to their assigned corporates (showing all locations within those corporates)
+  // For staff: filter to their specific assigned corporate+location pairs
   const assignedCorporates = user?.role === 'admin'
     ? corporatesFromDB
-    : corporatesFromDB.filter(c => user?.assignedCorporates?.includes(c.corporateId || c.id));
+    : corporatesFromDB.filter(c => {
+        // Match by specific location if available
+        if (c.locationId && user?.assignedLocationIds?.length) {
+          return user.assignedLocationIds.includes(c.locationId);
+        }
+        // Fallback: match by corporate ID
+        return user?.assignedCorporates?.includes(c.corporateId || c.id);
+      });
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
