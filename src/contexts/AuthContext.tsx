@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchAdminUsers = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*');
     if (!profiles) return;
-    const { data: profileCorps } = await supabase.from('profile_corporates').select('profile_id, corporate_id');
+    const { data: profileCorps } = await supabase.from('profile_corporates').select('profile_id, corporate_id, location_id');
     const users: AdminUser[] = profiles.map(d => {
       const assignments = profileCorps?.filter(pc => pc.profile_id === d.id) || [];
       return {
@@ -108,6 +108,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isSuperAdmin: d.role?.toLowerCase() === 'admin',
         assignedCorporates: assignments.map(a => a.corporate_id).filter(Boolean) as string[],
         location: d.location_id || '',
+        corporateAssignments: assignments.map(a => ({
+          corporateId: a.corporate_id || '',
+          locationId: a.location_id || '',
+        })),
         createdAt: d.created_at ? new Date(d.created_at) : new Date(),
       };
     });
