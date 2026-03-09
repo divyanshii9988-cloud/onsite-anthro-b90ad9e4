@@ -166,6 +166,7 @@ export interface Corporate {
   contactNumber?: string;
   corporateId?: string; // The parent corporate ID when this represents a location
   locationId?: string;  // The specific location ID
+  logoUrl?: string;     // Corporate logo URL
 }
 
 export interface Location {

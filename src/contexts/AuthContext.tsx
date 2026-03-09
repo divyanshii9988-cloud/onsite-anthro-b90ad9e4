@@ -58,12 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           address: corp.address || '',
           contactPerson: corp.contact_person || undefined,
           contactNumber: corp.contact_phone || undefined,
+          logoUrl: corp.logo_url || undefined,
         });
       } else {
         // Create an entry for each location
         for (const loc of corpLocations) {
           mapped.push({
-            id: `${corp.id}__${loc.id}`, // Combined ID for unique selection
+            id: `${corp.id}__${loc.id}`,
             corporateId: corp.id,
             locationId: loc.id,
             name: corp.name,
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             address: loc.address || corp.address || '',
             contactPerson: corp.contact_person || undefined,
             contactNumber: corp.contact_phone || undefined,
+            logoUrl: corp.logo_url || undefined,
           });
         }
       }
