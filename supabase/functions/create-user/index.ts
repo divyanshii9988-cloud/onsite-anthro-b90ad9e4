@@ -88,15 +88,18 @@ Deno.serve(async (req) => {
       location_id: locationId,
     });
 
-    // Create corporate assignments
+    // Create corporate assignments with location
     if (corporateAssignments && corporateAssignments.length > 0) {
       const assignments = corporateAssignments.map((a: any) => ({
         profile_id: userId,
         corporate_id: a.corporateId,
+        location_id: a.locationId || null,
       }));
-      // Remove duplicates by corporate_id
+      // Remove duplicates by corporate_id + location_id combination
       const uniqueAssignments = assignments.filter(
-        (a: any, i: number, arr: any[]) => arr.findIndex((b: any) => b.corporate_id === a.corporate_id) === i
+        (a: any, i: number, arr: any[]) => arr.findIndex((b: any) => 
+          b.corporate_id === a.corporate_id && b.location_id === a.location_id
+        ) === i
       );
       await adminClient.from("profile_corporates").insert(uniqueAssignments);
     }

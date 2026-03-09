@@ -476,18 +476,21 @@ export type Database = {
           corporate_id: string | null
           created_at: string | null
           id: string
+          location_id: string | null
           profile_id: string | null
         }
         Insert: {
           corporate_id?: string | null
           created_at?: string | null
           id?: string
+          location_id?: string | null
           profile_id?: string | null
         }
         Update: {
           corporate_id?: string | null
           created_at?: string | null
           id?: string
+          location_id?: string | null
           profile_id?: string | null
         }
         Relationships: [
@@ -496,6 +499,13 @@ export type Database = {
             columns: ["corporate_id"]
             isOneToOne: false
             referencedRelation: "corporates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_corporates_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "corporate_locations"
             referencedColumns: ["id"]
           },
           {
