@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User, Corporate, AdminUser } from '@/types/clinic';
 import { supabase } from '@/integrations/supabase/client';
-import { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -27,15 +26,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [selectedCorporate, setSelectedCorporate] = useState<Corporate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [corporatesFromDB, setCorporatesFromDB] = useState<Corporate[]>([]);
 
-  // Fetch admin users from profiles table + auth emails
+  // Fetch all corporates from Supabase
+  const refreshCorporates = useCallback(async () => {
+    const { data } = await supabase.from('corporates').select('*').order('name');
+    if (data) {
+      const mapped: Corporate[] = data.map(c => ({
+        id: c.id,
+        name: c.name,
+        location: c.city || '',
+        address: c.address || '',
+        contactPerson: c.contact_person || undefined,
+        contactNumber: c.contact_phone || undefined,
+      }));
+      setCorporatesFromDB(mapped);
+
+      // Restore selected corporate from localStorage using fresh DB data
+      const storedCorp = localStorage.getItem('clinicSelectedCorporate');
+      if (storedCorp) {
+        try {
+          const parsed = JSON.parse(storedCorp);
+          const fresh = mapped.find(c => c.id === parsed.id);
+          if (fresh) setSelectedCorporate(fresh);
+        } catch {}
+      }
+    }
+  }, []);
+
+  // Fetch admin users from profiles table
   const fetchAdminUsers = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*');
     if (!profiles) return;
-
-    // Fetch profile_corporates for assignments
     const { data: profileCorps } = await supabase.from('profile_corporates').select('profile_id, corporate_id');
-
     const users: AdminUser[] = profiles.map(d => {
       const assignments = profileCorps?.filter(pc => pc.profile_id === d.id) || [];
       return {
@@ -64,6 +87,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (profile) {
       const userRole = (profile.role?.toLowerCase() || 'nurse') as 'doctor' | 'nurse' | 'admin';
+      // For non-admin, fetch their assigned corporates
+      let assignedCorporateIds: string[] = [];
+      if (userRole !== 'admin') {
+        const { data: pc } = await supabase
+          .from('profile_corporates')
+          .select('corporate_id')
+          .eq('profile_id', sessionUserId);
+        assignedCorporateIds = (pc || []).map(r => r.corporate_id).filter(Boolean) as string[];
+      }
+
       const loggedInUser: User = {
         id: sessionUserId,
         email: sessionEmail,
@@ -71,15 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: userRole,
         locationId: '',
         locationName: '',
-        assignedCorporates: [],
+        assignedCorporates: assignedCorporateIds,
       };
       setUser(loggedInUser);
-
-      // Restore selected corporate
-      const storedCorp = localStorage.getItem('clinicSelectedCorporate');
-      if (storedCorp) {
-        setSelectedCorporate(JSON.parse(storedCorp));
-      }
     } else {
       setUser(null);
     }
@@ -89,22 +116,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          setTimeout(() => {
-            loadUserProfile(session.user.id, session.user.email || '');
-            fetchAdminUsers();
+          setTimeout(async () => {
+            await refreshCorporates();
+            await loadUserProfile(session.user.id, session.user.email || '');
+            await fetchAdminUsers();
           }, 0);
         } else {
           setUser(null);
           setSelectedCorporate(null);
+          setCorporatesFromDB([]);
         }
         setIsLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        loadUserProfile(session.user.id, session.user.email || '');
-        fetchAdminUsers();
+        await refreshCorporates();
+        await loadUserProfile(session.user.id, session.user.email || '');
+        await fetchAdminUsers();
       } else {
         setIsLoading(false);
       }
@@ -114,8 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const assignedCorporates = user?.role === 'admin'
-    ? allCorporates
-    : allCorporates.filter(c => user?.assignedCorporates?.includes(c.id));
+    ? corporatesFromDB
+    : corporatesFromDB.filter(c => user?.assignedCorporates?.includes(c.id));
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
@@ -138,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('clinicSelectedCorporate');
       return;
     }
-    const corporate = allCorporates.find(c => c.id === corporateId);
+    const corporate = corporatesFromDB.find(c => c.id === corporateId);
     if (corporate) {
       setSelectedCorporate(corporate);
       localStorage.setItem('clinicSelectedCorporate', JSON.stringify(corporate));
@@ -161,15 +191,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
 
-    if (response.error) {
-      throw new Error(response.error.message || 'Failed to create user');
-    }
-
+    if (response.error) throw new Error(response.error.message || 'Failed to create user');
     const result = response.data;
-    if (result?.error) {
-      throw new Error(result.error);
-    }
-
+    if (result?.error) throw new Error(result.error);
     await fetchAdminUsers();
   };
 
@@ -192,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user,
-      corporates: allCorporates,
+      corporates: corporatesFromDB,
       selectedCorporate,
       assignedCorporates,
       isAuthenticated: !!user,
@@ -204,6 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       addAdminUser,
       updateAdminUser,
       deleteAdminUser,
+      refreshCorporates,
     }}>
       {children}
     </AuthContext.Provider>
