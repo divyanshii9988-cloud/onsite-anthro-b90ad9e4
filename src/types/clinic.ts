@@ -186,6 +186,7 @@ export interface User {
   locationId: string;
   locationName: string;
   assignedCorporates?: string[];
+  assignedLocationIds?: string[];
   selectedCorporateId?: string;
 }
 
