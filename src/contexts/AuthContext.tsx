@@ -128,14 +128,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (profile) {
       const userRole = (profile.role?.toLowerCase() || 'nurse') as 'doctor' | 'nurse' | 'admin';
-      // For non-admin, fetch their assigned corporates
+      // For non-admin, fetch their assigned corporate+location pairs
       let assignedCorporateIds: string[] = [];
+      let assignedLocationIds: string[] = [];
       if (userRole !== 'admin') {
         const { data: pc } = await supabase
           .from('profile_corporates')
-          .select('corporate_id')
+          .select('corporate_id, location_id')
           .eq('profile_id', sessionUserId);
         assignedCorporateIds = (pc || []).map(r => r.corporate_id).filter(Boolean) as string[];
+        assignedLocationIds = (pc || []).map(r => r.location_id).filter(Boolean) as string[];
       }
 
       const loggedInUser: User = {
