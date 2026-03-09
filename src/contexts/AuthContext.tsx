@@ -28,29 +28,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [corporatesFromDB, setCorporatesFromDB] = useState<Corporate[]>([]);
 
-  // Fetch all corporates from Supabase
+  // Fetch all corporates with their locations from Supabase
   const refreshCorporates = useCallback(async () => {
-    const { data } = await supabase.from('corporates').select('*').order('name');
-    if (data) {
-      const mapped: Corporate[] = data.map(c => ({
-        id: c.id,
-        name: c.name,
-        location: c.city || '',
-        address: c.address || '',
-        contactPerson: c.contact_person || undefined,
-        contactNumber: c.contact_phone || undefined,
-      }));
-      setCorporatesFromDB(mapped);
+    // Fetch corporates
+    const { data: corpsData } = await supabase.from('corporates').select('*').order('name');
+    if (!corpsData) return;
 
-      // Restore selected corporate from localStorage using fresh DB data
-      const storedCorp = localStorage.getItem('clinicSelectedCorporate');
-      if (storedCorp) {
-        try {
-          const parsed = JSON.parse(storedCorp);
-          const fresh = mapped.find(c => c.id === parsed.id);
-          if (fresh) setSelectedCorporate(fresh);
-        } catch {}
+    // Fetch all locations
+    const corpIds = corpsData.map(c => c.id);
+    const { data: locsData } = await supabase
+      .from('corporate_locations')
+      .select('*')
+      .in('corporate_id', corpIds)
+      .order('location_name');
+
+    // Create a flat list: each corporate-location combination is an entry
+    const mapped: Corporate[] = [];
+
+    for (const corp of corpsData) {
+      const corpLocations = (locsData || []).filter(l => l.corporate_id === corp.id);
+      
+      if (corpLocations.length === 0) {
+        // Corporate has no locations, show just the corporate
+        mapped.push({
+          id: corp.id,
+          corporateId: corp.id,
+          name: corp.name,
+          location: corp.city || '',
+          address: corp.address || '',
+          contactPerson: corp.contact_person || undefined,
+          contactNumber: corp.contact_phone || undefined,
+        });
+      } else {
+        // Create an entry for each location
+        for (const loc of corpLocations) {
+          mapped.push({
+            id: `${corp.id}__${loc.id}`, // Combined ID for unique selection
+            corporateId: corp.id,
+            locationId: loc.id,
+            name: corp.name,
+            location: loc.location_name || loc.city || '',
+            address: loc.address || corp.address || '',
+            contactPerson: corp.contact_person || undefined,
+            contactNumber: corp.contact_phone || undefined,
+          });
+        }
       }
+    }
+
+    setCorporatesFromDB(mapped);
+
+    // Restore selected corporate from localStorage using fresh DB data
+    const storedCorp = localStorage.getItem('clinicSelectedCorporate');
+    if (storedCorp) {
+      try {
+        const parsed = JSON.parse(storedCorp);
+        const fresh = mapped.find(c => c.id === parsed.id);
+        if (fresh) setSelectedCorporate(fresh);
+      } catch {}
     }
   }, []);
 
@@ -102,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: sessionEmail,
         name: profile.full_name || sessionEmail,
         role: userRole,
-        locationId: '',
+        locationId: profile.location_id || '',
         locationName: '',
         assignedCorporates: assignedCorporateIds,
       };
@@ -143,9 +178,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // For admin: show all corporate-locations
+  // For staff: filter to their assigned corporates (showing all locations within those corporates)
   const assignedCorporates = user?.role === 'admin'
     ? corporatesFromDB
-    : corporatesFromDB.filter(c => user?.assignedCorporates?.includes(c.id));
+    : corporatesFromDB.filter(c => user?.assignedCorporates?.includes(c.corporateId || c.id));
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
