@@ -415,6 +415,27 @@ export default function ManageCorporates() {
                     <Button variant="ghost" size="icon" onClick={() => openEditCorporate(corp)} title="Edit">
                       <Pencil className="w-4 h-4" />
                     </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" title="Delete">
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete {corp.name}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete the corporate, all its locations, and user assignments. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteCorporate(corp)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))
