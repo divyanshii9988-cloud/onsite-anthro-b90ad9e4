@@ -129,8 +129,7 @@ export function Header() {
                             selectedCorporate?.id === corp.id ? 'opacity-100' : 'opacity-0'
                           )}
                         />
-                        <CorporateLogo name={corp.name} logoUrl={corp.logoUrl} />
-                        <div className="flex flex-col min-w-0 ml-2">
+                        <div className="flex flex-col min-w-0">
                           <span className="font-medium truncate">{corp.name}</span>
                           {corp.location && (
                             <span className="text-xs text-muted-foreground">{corp.location}</span>
