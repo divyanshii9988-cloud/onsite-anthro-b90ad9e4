@@ -17,18 +17,10 @@ interface AuthContextType {
   addAdminUser: (user: Omit<AdminUser, 'id' | 'createdAt'>) => Promise<void>;
   updateAdminUser: (id: string, updates: Partial<AdminUser>) => Promise<void>;
   deleteAdminUser: (id: string) => Promise<void>;
+  refreshCorporates: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// All corporates available in the system
-const allCorporates: Corporate[] = [
-  { id: 'corp1', name: 'Infosys Ltd', location: 'Bangalore', address: 'Electronic City, Bangalore' },
-  { id: 'corp2', name: 'Tata Consultancy Services', location: 'Mumbai', address: 'Andheri East, Mumbai' },
-  { id: 'corp3', name: 'Wipro Technologies', location: 'Hyderabad', address: 'HITEC City, Hyderabad' },
-  { id: 'corp4', name: 'Tech Mahindra', location: 'Pune', address: 'Hinjewadi, Pune' },
-  { id: 'corp5', name: 'HCL Technologies', location: 'Noida', address: 'Sector 126, Noida' },
-];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
