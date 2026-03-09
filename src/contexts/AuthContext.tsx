@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           address: corp.address || '',
           contactPerson: corp.contact_person || undefined,
           contactNumber: corp.contact_phone || undefined,
+          logoUrl: corp.logo_url || undefined,
         });
       } else {
         // Create an entry for each location
