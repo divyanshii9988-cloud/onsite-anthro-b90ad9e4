@@ -25,14 +25,55 @@ export default function Prescriptions() {
   const selectedEmp = employees.find(e => e.id === selectedEmployee);
   const filteredPrescriptions = filterByDateRange(prescriptions, dateRange, 'sentAt');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasPermission(user?.role, 'generate_prescription')) { toast.error('Access Denied: You do not have permission to generate prescriptions'); return; }
     if (!selectedEmployee || !formData.diagnosis || !formData.medicines) { toast.error('Please fill in all required fields'); return; }
+    
     const medicineLines = formData.medicines.split('\n').filter(line => line.trim());
-    const parsedMedicines = medicineLines.map(line => { const parts = line.split('-').map(p => p.trim()); return { name: parts[0] || line, dosage: parts[1] || '', duration: parts[2] || '', instructions: parts[3] || '' }; });
+    const parsedMedicines = medicineLines.map(line => { 
+      const parts = line.split('-').map(p => p.trim()); 
+      return { name: parts[0] || line, dosage: parts[1] || '', duration: parts[2] || '', instructions: parts[3] || '' }; 
+    });
+    
     const sentTo = formData.sentVia === 'sms' || formData.sentVia === 'both' ? selectedEmp?.mobile : selectedEmp?.email;
-    addPrescription({ walkInId: '', employeeId: selectedEmployee, employeeName: selectedEmp?.name || '', doctorName: user?.name || 'Doctor', medicines: parsedMedicines, diagnosis: formData.diagnosis, advice: formData.advice || undefined, sentVia: formData.sentVia, sentTo: sentTo || '', locationId: selectedCorporate?.id || '' });
+    
+    // Send email via edge function if email is selected
+    if (formData.sentVia === 'email' || formData.sentVia === 'both') {
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { error } = await supabase.functions.invoke('send-prescription-email', {
+          body: {
+            patientEmail: selectedEmp?.email,
+            patientName: selectedEmp?.name,
+            doctorName: user?.name || 'Doctor',
+            diagnosis: formData.diagnosis,
+            medicines: parsedMedicines,
+            advice: formData.advice || undefined,
+          }
+        });
+        
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error sending prescription email:', error);
+        toast.error('Failed to send email. Please try again.');
+        return;
+      }
+    }
+    
+    addPrescription({ 
+      walkInId: '', 
+      employeeId: selectedEmployee, 
+      employeeName: selectedEmp?.name || '', 
+      doctorName: user?.name || 'Doctor', 
+      medicines: parsedMedicines, 
+      diagnosis: formData.diagnosis, 
+      advice: formData.advice || undefined, 
+      sentVia: formData.sentVia, 
+      sentTo: sentTo || '', 
+      locationId: selectedCorporate?.id || '' 
+    });
+    
     toast.success(`Digital prescription sent via ${formData.sentVia}!`);
     setIsDialogOpen(false);
     setSelectedEmployee('');
