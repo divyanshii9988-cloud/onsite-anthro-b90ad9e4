@@ -72,6 +72,9 @@ export interface Medicine {
   minStock: number;
   locationId: string;
   corporateId?: string;
+  itemType?: string;
+  form?: string;
+  strength?: string;
 }
 
 export interface Emergency {
