@@ -360,9 +360,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       quantity: waste.quantity,
       unit: waste.unit,
       collected_by: waste.collectedBy,
+      collector_contact: waste.collectorContact || null,
       remarks: waste.remarks || null,
       logged_by: userId,
-    });
+    } as any);
     if (error) { toast.error('Failed to log waste: ' + error.message); return; }
     fetchAll();
   };
