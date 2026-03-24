@@ -61,10 +61,13 @@ export default function Inventory() {
       unit: formData.unit, minStock: parseInt(formData.minStock) || 10,
       expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
       locationId: selectedCorporate?.id || '',
+      itemType: formData.itemType || 'medicine',
+      form: formData.form || undefined,
+      strength: formData.strength || undefined,
     });
-    toast.success('Medicine added successfully!');
+    toast.success('Item added successfully!');
     setIsDialogOpen(false);
-    setFormData({ name: '', sku: '', brand: '', category: '', quantity: '', unit: '', minStock: '', expiryDate: '' });
+    setFormData({ name: '', sku: '', brand: '', category: '', itemType: 'medicine', quantity: '', unit: '', minStock: '', expiryDate: '', form: '', strength: '' });
   };
 
   const handleStockUpdate = (id: string, currentQty: number) => {
