@@ -218,8 +218,9 @@ export default function WalkIns() {
       consultationType: 'doctor',
       chiefComplaint: '', diagnosis: '',
       bp: '', pulse: '', temperature: '', spo2: '', weight: '',
-      medicineId: '', medicineQty: '', prescription: ''
+      prescription: ''
     });
+    setSelectedMedicines([{ medicineId: '', quantity: '' }]);
     setEmergencyData({
       incidentType: '', severity: 'moderate', description: '', actionTaken: '',
       bp: '', pulse: '', temperature: '', spo2: '', weight: '',

@@ -64,6 +64,7 @@ export type Database = {
       biomedical_waste: {
         Row: {
           collected_by: string | null
+          collector_contact: string | null
           created_at: string | null
           id: string
           logged_by: string | null
@@ -74,6 +75,7 @@ export type Database = {
         }
         Insert: {
           collected_by?: string | null
+          collector_contact?: string | null
           created_at?: string | null
           id?: string
           logged_by?: string | null
@@ -84,6 +86,7 @@ export type Database = {
         }
         Update: {
           collected_by?: string | null
+          collector_contact?: string | null
           created_at?: string | null
           id?: string
           logged_by?: string | null
@@ -380,11 +383,14 @@ export type Database = {
           category: string | null
           created_at: string | null
           expiry_date: string | null
+          form: string | null
           id: string
+          item_type: string | null
           medicine_name: string
           min_stock_level: number | null
           quantity: number
           sku: string
+          strength: string | null
           unit: string | null
         }
         Insert: {
@@ -392,11 +398,14 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           expiry_date?: string | null
+          form?: string | null
           id?: string
+          item_type?: string | null
           medicine_name: string
           min_stock_level?: number | null
           quantity: number
           sku: string
+          strength?: string | null
           unit?: string | null
         }
         Update: {
@@ -404,11 +413,14 @@ export type Database = {
           category?: string | null
           created_at?: string | null
           expiry_date?: string | null
+          form?: string | null
           id?: string
+          item_type?: string | null
           medicine_name?: string
           min_stock_level?: number | null
           quantity?: number
           sku?: string
+          strength?: string | null
           unit?: string | null
         }
         Relationships: []
