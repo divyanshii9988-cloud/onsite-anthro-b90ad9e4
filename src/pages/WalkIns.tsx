@@ -42,10 +42,19 @@ export default function WalkIns() {
     temperature: '',
     spo2: '',
     weight: '',
-    medicineId: '',
-    medicineQty: '',
     prescription: '',
   });
+
+  // Multi-medicine selection
+  const [selectedMedicines, setSelectedMedicines] = useState<{ medicineId: string; quantity: string }[]>([
+    { medicineId: '', quantity: '' }
+  ]);
+
+  const addMedicineRow = () => setSelectedMedicines(prev => [...prev, { medicineId: '', quantity: '' }]);
+  const removeMedicineRow = (index: number) => setSelectedMedicines(prev => prev.filter((_, i) => i !== index));
+  const updateMedicineRow = (index: number, field: 'medicineId' | 'quantity', value: string) => {
+    setSelectedMedicines(prev => prev.map((row, i) => i === index ? { ...row, [field]: value } : row));
+  };
 
   // Emergency form data
   const [emergencyData, setEmergencyData] = useState({
