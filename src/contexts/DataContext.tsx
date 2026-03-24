@@ -145,6 +145,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       quantity: Number(w.quantity) || 0,
       unit: (w.unit as 'kg' | 'grams' | 'bags') || 'kg',
       collectedBy: w.collected_by || '',
+      collectorContact: (w as any).collector_contact || undefined,
       collectedAt: new Date(w.created_at || Date.now()),
       remarks: w.remarks || undefined,
       locationId: '',
