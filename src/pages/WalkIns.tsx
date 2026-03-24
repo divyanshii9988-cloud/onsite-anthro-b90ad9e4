@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Download, Search, Stethoscope, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Download, Search, Stethoscope, AlertTriangle, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
