@@ -305,7 +305,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       unit: medicine.unit || null,
       min_stock_level: medicine.minStock || 5,
       expiry_date: medicine.expiryDate ? medicine.expiryDate.toISOString().split('T')[0] : null,
-    });
+      item_type: (medicine as any).itemType || 'medicine',
+      form: (medicine as any).form || null,
+      strength: (medicine as any).strength || null,
+    } as any);
     if (error) { toast.error('Failed to add medicine: ' + error.message); return; }
     fetchAll();
   };
