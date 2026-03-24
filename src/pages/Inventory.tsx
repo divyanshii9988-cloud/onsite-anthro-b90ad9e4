@@ -20,8 +20,9 @@ export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showExpired, setShowExpired] = useState(false);
   const [formData, setFormData] = useState({
-    name: '', sku: '', brand: '', category: '',
+    name: '', sku: '', brand: '', category: '', itemType: 'medicine',
     quantity: '', unit: '', minStock: '', expiryDate: '',
+    form: '', strength: '',
   });
 
   const now = new Date();
