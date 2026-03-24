@@ -27,10 +27,10 @@ export default function BioWaste() {
     e.preventDefault();
     if (!formData.wasteType || !formData.quantity || !formData.collectedBy) { toast.error('Please fill in all required fields'); return; }
     try {
-      await addBioWaste({ wasteType: formData.wasteType as 'yellow' | 'red' | 'blue' | 'white' | 'black', quantity: parseFloat(formData.quantity), unit: formData.unit as any, collectedBy: formData.collectedBy, collectedAt: new Date(), remarks: formData.remarks || undefined, locationId: selectedCorporate?.id || '' });
+      await addBioWaste({ wasteType: formData.wasteType as 'yellow' | 'red' | 'blue' | 'white' | 'black', quantity: parseFloat(formData.quantity), unit: formData.unit as any, collectedBy: formData.collectedBy, collectorContact: formData.collectorContact || undefined, collectedAt: new Date(), remarks: formData.remarks || undefined, locationId: selectedCorporate?.id || '' });
       toast.success('Biomedical waste log added successfully!');
       setIsDialogOpen(false);
-      setFormData({ wasteType: '', quantity: '', unit: 'kg', collectedBy: '', remarks: '' });
+      setFormData({ wasteType: '', quantity: '', unit: 'kg', collectedBy: '', collectorContact: '', remarks: '' });
     } catch (err: any) {
       toast.error(err?.message || 'Failed to add waste log');
     }
