@@ -72,6 +72,9 @@ export interface Medicine {
   minStock: number;
   locationId: string;
   corporateId?: string;
+  itemType?: string;
+  form?: string;
+  strength?: string;
 }
 
 export interface Emergency {
@@ -97,6 +100,7 @@ export interface BiowWaste {
   quantity: number;
   unit: 'kg' | 'grams' | 'bags';
   collectedBy: string;
+  collectorContact?: string;
   collectedAt: Date;
   disposedAt?: Date;
   remarks?: string;

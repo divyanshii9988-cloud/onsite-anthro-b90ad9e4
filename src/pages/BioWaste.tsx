@@ -19,7 +19,7 @@ export default function BioWaste() {
   const { selectedCorporate, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
-  const [formData, setFormData] = useState({ wasteType: '' as 'yellow' | 'red' | 'blue' | 'white' | 'black' | '', quantity: '', unit: 'kg' as 'kg' | 'grams' | 'bags', collectedBy: '', remarks: '' });
+  const [formData, setFormData] = useState({ wasteType: '' as 'yellow' | 'red' | 'blue' | 'white' | 'black' | '', quantity: '', unit: 'kg' as 'kg' | 'grams' | 'bags', collectedBy: '', collectorContact: '', remarks: '' });
 
   const filteredBioWaste = filterByDateRange(bioWaste, dateRange, 'collectedAt');
 
@@ -27,10 +27,10 @@ export default function BioWaste() {
     e.preventDefault();
     if (!formData.wasteType || !formData.quantity || !formData.collectedBy) { toast.error('Please fill in all required fields'); return; }
     try {
-      await addBioWaste({ wasteType: formData.wasteType as 'yellow' | 'red' | 'blue' | 'white' | 'black', quantity: parseFloat(formData.quantity), unit: formData.unit as any, collectedBy: formData.collectedBy, collectedAt: new Date(), remarks: formData.remarks || undefined, locationId: selectedCorporate?.id || '' });
+      await addBioWaste({ wasteType: formData.wasteType as 'yellow' | 'red' | 'blue' | 'white' | 'black', quantity: parseFloat(formData.quantity), unit: formData.unit as any, collectedBy: formData.collectedBy, collectorContact: formData.collectorContact || undefined, collectedAt: new Date(), remarks: formData.remarks || undefined, locationId: selectedCorporate?.id || '' });
       toast.success('Biomedical waste log added successfully!');
       setIsDialogOpen(false);
-      setFormData({ wasteType: '', quantity: '', unit: 'kg', collectedBy: '', remarks: '' });
+      setFormData({ wasteType: '', quantity: '', unit: 'kg', collectedBy: '', collectorContact: '', remarks: '' });
     } catch (err: any) {
       toast.error(err?.message || 'Failed to add waste log');
     }
@@ -66,6 +66,7 @@ export default function BioWaste() {
                 <div className="form-group"><Label className="form-label">Waste Type *</Label><Select value={formData.wasteType} onValueChange={(value: 'yellow' | 'red' | 'blue' | 'white' | 'black') => setFormData(prev => ({ ...prev, wasteType: value }))}><SelectTrigger><SelectValue placeholder="Select waste type" /></SelectTrigger><SelectContent>{wasteTypes.map(type => (<SelectItem key={type.value} value={type.value}><div className="flex items-center gap-2"><div className={`w-3 h-3 rounded-full ${type.color}`} />{type.label}</div></SelectItem>))}</SelectContent></Select></div>
                 <div className="grid grid-cols-2 gap-4"><div className="form-group"><Label className="form-label">Quantity *</Label><Input type="number" step="0.1" value={formData.quantity} onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))} placeholder="e.g., 2.5" required /></div><div className="form-group"><Label className="form-label">Unit *</Label><Select value={formData.unit} onValueChange={(value: 'kg' | 'grams' | 'bags') => setFormData(prev => ({ ...prev, unit: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="kg">Kilograms (kg)</SelectItem><SelectItem value="grams">Grams (g)</SelectItem><SelectItem value="bags">Bags</SelectItem></SelectContent></Select></div></div>
                 <div className="form-group"><Label className="form-label">Collected By *</Label><Input value={formData.collectedBy} onChange={(e) => setFormData(prev => ({ ...prev, collectedBy: e.target.value }))} placeholder="Name of collector / agency" required /></div>
+                <div className="form-group"><Label className="form-label">Collector Contact Number</Label><Input value={formData.collectorContact} onChange={(e) => setFormData(prev => ({ ...prev, collectorContact: e.target.value }))} placeholder="e.g., 9876543210" /></div>
                 <div className="form-group"><Label className="form-label">Remarks</Label><Textarea value={formData.remarks} onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))} placeholder="Any additional notes..." rows={2} /></div>
                 <div className="flex justify-end gap-3 pt-4"><Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button><Button type="submit">Add Log</Button></div>
               </form>

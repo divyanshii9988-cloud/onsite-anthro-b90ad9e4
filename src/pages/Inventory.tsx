@@ -20,8 +20,9 @@ export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showExpired, setShowExpired] = useState(false);
   const [formData, setFormData] = useState({
-    name: '', sku: '', brand: '', category: '',
+    name: '', sku: '', brand: '', category: '', itemType: 'medicine',
     quantity: '', unit: '', minStock: '', expiryDate: '',
+    form: '', strength: '',
   });
 
   const now = new Date();
@@ -60,10 +61,13 @@ export default function Inventory() {
       unit: formData.unit, minStock: parseInt(formData.minStock) || 10,
       expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : undefined,
       locationId: selectedCorporate?.id || '',
+      itemType: formData.itemType || 'medicine',
+      form: formData.form || undefined,
+      strength: formData.strength || undefined,
     });
-    toast.success('Medicine added successfully!');
+    toast.success('Item added successfully!');
     setIsDialogOpen(false);
-    setFormData({ name: '', sku: '', brand: '', category: '', quantity: '', unit: '', minStock: '', expiryDate: '' });
+    setFormData({ name: '', sku: '', brand: '', category: '', itemType: 'medicine', quantity: '', unit: '', minStock: '', expiryDate: '', form: '', strength: '' });
   };
 
   const handleStockUpdate = (id: string, currentQty: number) => {
@@ -100,8 +104,14 @@ export default function Inventory() {
     a.click();
   };
 
-  const categories = ['Analgesic', 'Antihistamine', 'Antacid', 'Antibiotic', 'First Aid', 'Electrolyte', 'Vitamin', 'Other'];
-  const units = ['tablets', 'capsules', 'ml', 'sachets', 'rolls', 'pieces', 'bottles'];
+  const categories = ['Analgesic', 'Antihistamine', 'Antacid', 'Antibiotic', 'First Aid', 'Electrolyte', 'Vitamin', 'Surgical Instrument', 'Other'];
+  const units = ['tablets', 'capsules', 'ml', 'sachets', 'rolls', 'pieces', 'bottles', 'pairs', 'sets'];
+  const itemTypes = [
+    { value: 'medicine', label: 'Medicine' },
+    { value: 'surgical_instrument', label: 'Surgical Instrument' },
+    { value: 'first_aid', label: 'First Aid Item' },
+  ];
+  const medicineForms = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Ointment', 'Drops', 'Inhaler', 'Powder', 'Gel', 'Spray', 'Suspension', 'Suppository'];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -118,19 +128,41 @@ export default function Inventory() {
           )}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2"><Plus className="w-4 h-4" /> Add Medicine</Button>
+              <Button className="gap-2"><Plus className="w-4 h-4" /> Add Item</Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
-              <DialogHeader><DialogTitle>Add New Medicine</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>Add New Item</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 pt-4">
+                <div className="form-group col-span-2">
+                  <Label className="form-label">Item Type *</Label>
+                  <Select value={formData.itemType} onValueChange={(value) => setFormData(prev => ({ ...prev, itemType: value }))}>
+                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>{itemTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
                 <div className="form-group">
-                  <Label className="form-label">Medicine Name *</Label>
-                  <Input value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Paracetamol 500mg" required />
+                  <Label className="form-label">{formData.itemType === 'medicine' ? 'Medicine Name' : 'Item Name'} *</Label>
+                  <Input value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder={formData.itemType === 'medicine' ? 'e.g., Paracetamol' : 'e.g., Surgical Scissors'} required />
                 </div>
                 <div className="form-group">
                   <Label className="form-label">SKU / Item ID *</Label>
                   <Input value={formData.sku} onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))} placeholder="e.g., PAR500" required />
                 </div>
+                {formData.itemType === 'medicine' && (
+                  <>
+                    <div className="form-group">
+                      <Label className="form-label">Form</Label>
+                      <Select value={formData.form} onValueChange={(value) => setFormData(prev => ({ ...prev, form: value }))}>
+                        <SelectTrigger><SelectValue placeholder="Select form" /></SelectTrigger>
+                        <SelectContent>{medicineForms.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="form-group">
+                      <Label className="form-label">Strength</Label>
+                      <Input value={formData.strength} onChange={(e) => setFormData(prev => ({ ...prev, strength: e.target.value }))} placeholder="e.g., 650 mg, 500 mg" />
+                    </div>
+                  </>
+                )}
                 <div className="form-group">
                   <Label className="form-label">Brand</Label>
                   <Input value={formData.brand} onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))} placeholder="e.g., Crocin" />
@@ -163,7 +195,7 @@ export default function Inventory() {
                 </div>
                 <div className="col-span-2 flex justify-end gap-3 pt-4">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                  <Button type="submit">Add Medicine</Button>
+                  <Button type="submit">Add Item</Button>
                 </div>
               </form>
             </DialogContent>

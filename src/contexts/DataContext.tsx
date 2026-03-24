@@ -119,6 +119,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       expiryDate: m.expiry_date ? new Date(m.expiry_date) : undefined,
       minStock: m.min_stock_level || 5,
       locationId: '',
+      itemType: (m as any).item_type || 'medicine',
+      form: (m as any).form || undefined,
+      strength: (m as any).strength || undefined,
     })));
 
     if (emergencies) setAllEmergencies(emergencies.map(e => ({
@@ -142,6 +145,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       quantity: Number(w.quantity) || 0,
       unit: (w.unit as 'kg' | 'grams' | 'bags') || 'kg',
       collectedBy: w.collected_by || '',
+      collectorContact: (w as any).collector_contact || undefined,
       collectedAt: new Date(w.created_at || Date.now()),
       remarks: w.remarks || undefined,
       locationId: '',
@@ -301,7 +305,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       unit: medicine.unit || null,
       min_stock_level: medicine.minStock || 5,
       expiry_date: medicine.expiryDate ? medicine.expiryDate.toISOString().split('T')[0] : null,
-    });
+      item_type: (medicine as any).itemType || 'medicine',
+      form: (medicine as any).form || null,
+      strength: (medicine as any).strength || null,
+    } as any);
     if (error) { toast.error('Failed to add medicine: ' + error.message); return; }
     fetchAll();
   };
@@ -353,9 +360,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       quantity: waste.quantity,
       unit: waste.unit,
       collected_by: waste.collectedBy,
+      collector_contact: waste.collectorContact || null,
       remarks: waste.remarks || null,
       logged_by: userId,
-    });
+    } as any);
     if (error) { toast.error('Failed to log waste: ' + error.message); return; }
     fetchAll();
   };

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Download, Search, Stethoscope, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Download, Search, Stethoscope, AlertTriangle, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,10 +42,19 @@ export default function WalkIns() {
     temperature: '',
     spo2: '',
     weight: '',
-    medicineId: '',
-    medicineQty: '',
     prescription: '',
   });
+
+  // Multi-medicine selection
+  const [selectedMedicines, setSelectedMedicines] = useState<{ medicineId: string; quantity: string }[]>([
+    { medicineId: '', quantity: '' }
+  ]);
+
+  const addMedicineRow = () => setSelectedMedicines(prev => [...prev, { medicineId: '', quantity: '' }]);
+  const removeMedicineRow = (index: number) => setSelectedMedicines(prev => prev.filter((_, i) => i !== index));
+  const updateMedicineRow = (index: number, field: 'medicineId' | 'quantity', value: string) => {
+    setSelectedMedicines(prev => prev.map((row, i) => i === index ? { ...row, [field]: value } : row));
+  };
 
   // Emergency form data
   const [emergencyData, setEmergencyData] = useState({
@@ -165,7 +174,12 @@ export default function WalkIns() {
         return;
       }
 
-      const selectedMedicine = medicines.find(m => m.id === formData.medicineId);
+      const dispensedMeds = selectedMedicines
+        .filter(row => row.medicineId && row.quantity)
+        .map(row => {
+          const med = medicines.find(m => m.id === row.medicineId);
+          return { medicineId: row.medicineId, medicineName: med?.name || '', quantity: parseInt(row.quantity) };
+        });
 
       success = await addWalkIn({
         employeeId: selectedEmployee,
@@ -181,11 +195,7 @@ export default function WalkIns() {
           spo2: formData.spo2 ? parseInt(formData.spo2) : undefined,
           weight: formData.weight ? parseFloat(formData.weight) : undefined,
         },
-        medicinesDispensed: selectedMedicine && formData.medicineQty ? [{
-          medicineId: formData.medicineId,
-          medicineName: selectedMedicine.name,
-          quantity: parseInt(formData.medicineQty),
-        }] : undefined,
+        medicinesDispensed: dispensedMeds.length > 0 ? dispensedMeds : undefined,
         prescription: formData.prescription || undefined,
         locationId: selectedCorporate?.id || '',
         isEmergency: false,
@@ -208,8 +218,9 @@ export default function WalkIns() {
       consultationType: 'doctor',
       chiefComplaint: '', diagnosis: '',
       bp: '', pulse: '', temperature: '', spo2: '', weight: '',
-      medicineId: '', medicineQty: '', prescription: ''
+      prescription: ''
     });
+    setSelectedMedicines([{ medicineId: '', quantity: '' }]);
     setEmergencyData({
       incidentType: '', severity: 'moderate', description: '', actionTaken: '',
       bp: '', pulse: '', temperature: '', spo2: '', weight: '',
@@ -564,28 +575,43 @@ export default function WalkIns() {
                     </div>
 
                     {/* Diagnosis & Medicine */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="form-group">
-                        <Label className="form-label">Diagnosis</Label>
-                        <Input value={formData.diagnosis} onChange={(e) => setFormData(prev => ({ ...prev, diagnosis: e.target.value }))} placeholder="e.g., Viral fever" />
+                    <div className="form-group">
+                      <Label className="form-label">Diagnosis</Label>
+                      <Input value={formData.diagnosis} onChange={(e) => setFormData(prev => ({ ...prev, diagnosis: e.target.value }))} placeholder="e.g., Viral fever" />
+                    </div>
+
+                    {/* Multi-medicine selection */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="form-label">Medicines Dispensed</Label>
+                        <Button type="button" variant="outline" size="sm" onClick={addMedicineRow} className="gap-1">
+                          <Plus className="w-3 h-3" /> Add Medicine
+                        </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="form-group">
-                          <Label className="form-label">Medicine</Label>
-                          <Select value={formData.medicineId} onValueChange={(value) => setFormData(prev => ({ ...prev, medicineId: value }))}>
-                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>
-                              {medicines.map(med => (
-                                <SelectItem key={med.id} value={med.id}>{med.name} ({med.quantity})</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                      {selectedMedicines.map((row, index) => (
+                        <div key={index} className="flex items-end gap-2">
+                          <div className="flex-1 form-group">
+                            {index === 0 && <Label className="form-label text-xs">Medicine</Label>}
+                            <Select value={row.medicineId} onValueChange={(value) => updateMedicineRow(index, 'medicineId', value)}>
+                              <SelectTrigger><SelectValue placeholder="Select medicine" /></SelectTrigger>
+                              <SelectContent>
+                                {medicines.map(med => (
+                                  <SelectItem key={med.id} value={med.id}>{med.name} ({med.quantity} {med.unit})</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-20 form-group">
+                            {index === 0 && <Label className="form-label text-xs">Qty</Label>}
+                            <Input type="number" value={row.quantity} onChange={(e) => updateMedicineRow(index, 'quantity', e.target.value)} placeholder="1" />
+                          </div>
+                          {selectedMedicines.length > 1 && (
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeMedicineRow(index)} className="h-9 w-9 text-destructive">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
-                        <div className="form-group">
-                          <Label className="form-label">Qty</Label>
-                          <Input type="number" value={formData.medicineQty} onChange={(e) => setFormData(prev => ({ ...prev, medicineQty: e.target.value }))} placeholder="10" />
-                        </div>
-                      </div>
+                      ))}
                     </div>
 
                     <div className="form-group">
