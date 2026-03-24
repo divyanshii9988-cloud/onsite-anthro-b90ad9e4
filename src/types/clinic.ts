@@ -100,6 +100,7 @@ export interface BiowWaste {
   quantity: number;
   unit: 'kg' | 'grams' | 'bags';
   collectedBy: string;
+  collectorContact?: string;
   collectedAt: Date;
   disposedAt?: Date;
   remarks?: string;
