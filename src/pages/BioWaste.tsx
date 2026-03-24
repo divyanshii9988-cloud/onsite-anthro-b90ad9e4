@@ -19,7 +19,7 @@ export default function BioWaste() {
   const { selectedCorporate, user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>(getDefaultDateRange());
-  const [formData, setFormData] = useState({ wasteType: '' as 'yellow' | 'red' | 'blue' | 'white' | 'black' | '', quantity: '', unit: 'kg' as 'kg' | 'grams' | 'bags', collectedBy: '', remarks: '' });
+  const [formData, setFormData] = useState({ wasteType: '' as 'yellow' | 'red' | 'blue' | 'white' | 'black' | '', quantity: '', unit: 'kg' as 'kg' | 'grams' | 'bags', collectedBy: '', collectorContact: '', remarks: '' });
 
   const filteredBioWaste = filterByDateRange(bioWaste, dateRange, 'collectedAt');
 
