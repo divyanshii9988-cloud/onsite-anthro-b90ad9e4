@@ -575,28 +575,43 @@ export default function WalkIns() {
                     </div>
 
                     {/* Diagnosis & Medicine */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="form-group">
-                        <Label className="form-label">Diagnosis</Label>
-                        <Input value={formData.diagnosis} onChange={(e) => setFormData(prev => ({ ...prev, diagnosis: e.target.value }))} placeholder="e.g., Viral fever" />
+                    <div className="form-group">
+                      <Label className="form-label">Diagnosis</Label>
+                      <Input value={formData.diagnosis} onChange={(e) => setFormData(prev => ({ ...prev, diagnosis: e.target.value }))} placeholder="e.g., Viral fever" />
+                    </div>
+
+                    {/* Multi-medicine selection */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="form-label">Medicines Dispensed</Label>
+                        <Button type="button" variant="outline" size="sm" onClick={addMedicineRow} className="gap-1">
+                          <Plus className="w-3 h-3" /> Add Medicine
+                        </Button>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="form-group">
-                          <Label className="form-label">Medicine</Label>
-                          <Select value={formData.medicineId} onValueChange={(value) => setFormData(prev => ({ ...prev, medicineId: value }))}>
-                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                            <SelectContent>
-                              {medicines.map(med => (
-                                <SelectItem key={med.id} value={med.id}>{med.name} ({med.quantity})</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                      {selectedMedicines.map((row, index) => (
+                        <div key={index} className="flex items-end gap-2">
+                          <div className="flex-1 form-group">
+                            {index === 0 && <Label className="form-label text-xs">Medicine</Label>}
+                            <Select value={row.medicineId} onValueChange={(value) => updateMedicineRow(index, 'medicineId', value)}>
+                              <SelectTrigger><SelectValue placeholder="Select medicine" /></SelectTrigger>
+                              <SelectContent>
+                                {medicines.map(med => (
+                                  <SelectItem key={med.id} value={med.id}>{med.name} ({med.quantity} {med.unit})</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-20 form-group">
+                            {index === 0 && <Label className="form-label text-xs">Qty</Label>}
+                            <Input type="number" value={row.quantity} onChange={(e) => updateMedicineRow(index, 'quantity', e.target.value)} placeholder="1" />
+                          </div>
+                          {selectedMedicines.length > 1 && (
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeMedicineRow(index)} className="h-9 w-9 text-destructive">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
-                        <div className="form-group">
-                          <Label className="form-label">Qty</Label>
-                          <Input type="number" value={formData.medicineQty} onChange={(e) => setFormData(prev => ({ ...prev, medicineQty: e.target.value }))} placeholder="10" />
-                        </div>
-                      </div>
+                      ))}
                     </div>
 
                     <div className="form-group">
