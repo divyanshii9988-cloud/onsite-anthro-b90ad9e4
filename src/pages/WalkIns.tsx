@@ -174,7 +174,12 @@ export default function WalkIns() {
         return;
       }
 
-      const selectedMedicine = medicines.find(m => m.id === formData.medicineId);
+      const dispensedMeds = selectedMedicines
+        .filter(row => row.medicineId && row.quantity)
+        .map(row => {
+          const med = medicines.find(m => m.id === row.medicineId);
+          return { medicineId: row.medicineId, medicineName: med?.name || '', quantity: parseInt(row.quantity) };
+        });
 
       success = await addWalkIn({
         employeeId: selectedEmployee,
@@ -190,11 +195,7 @@ export default function WalkIns() {
           spo2: formData.spo2 ? parseInt(formData.spo2) : undefined,
           weight: formData.weight ? parseFloat(formData.weight) : undefined,
         },
-        medicinesDispensed: selectedMedicine && formData.medicineQty ? [{
-          medicineId: formData.medicineId,
-          medicineName: selectedMedicine.name,
-          quantity: parseInt(formData.medicineQty),
-        }] : undefined,
+        medicinesDispensed: dispensedMeds.length > 0 ? dispensedMeds : undefined,
         prescription: formData.prescription || undefined,
         locationId: selectedCorporate?.id || '',
         isEmergency: false,
