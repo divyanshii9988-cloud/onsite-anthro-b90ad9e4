@@ -119,6 +119,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       expiryDate: m.expiry_date ? new Date(m.expiry_date) : undefined,
       minStock: m.min_stock_level || 5,
       locationId: '',
+      itemType: (m as any).item_type || 'medicine',
+      form: (m as any).form || undefined,
+      strength: (m as any).strength || undefined,
     })));
 
     if (emergencies) setAllEmergencies(emergencies.map(e => ({
