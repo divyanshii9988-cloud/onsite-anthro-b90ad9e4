@@ -104,8 +104,14 @@ export default function Inventory() {
     a.click();
   };
 
-  const categories = ['Analgesic', 'Antihistamine', 'Antacid', 'Antibiotic', 'First Aid', 'Electrolyte', 'Vitamin', 'Other'];
-  const units = ['tablets', 'capsules', 'ml', 'sachets', 'rolls', 'pieces', 'bottles'];
+  const categories = ['Analgesic', 'Antihistamine', 'Antacid', 'Antibiotic', 'First Aid', 'Electrolyte', 'Vitamin', 'Surgical Instrument', 'Other'];
+  const units = ['tablets', 'capsules', 'ml', 'sachets', 'rolls', 'pieces', 'bottles', 'pairs', 'sets'];
+  const itemTypes = [
+    { value: 'medicine', label: 'Medicine' },
+    { value: 'surgical_instrument', label: 'Surgical Instrument' },
+    { value: 'first_aid', label: 'First Aid Item' },
+  ];
+  const medicineForms = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Ointment', 'Drops', 'Inhaler', 'Powder', 'Gel', 'Spray', 'Suspension', 'Suppository'];
 
   return (
     <div className="space-y-6 animate-fade-in">
