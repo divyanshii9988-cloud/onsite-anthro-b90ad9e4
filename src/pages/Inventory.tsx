@@ -128,7 +128,7 @@ export default function Inventory() {
           )}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2"><Plus className="w-4 h-4" /> Add Medicine</Button>
+              <Button className="gap-2"><Plus className="w-4 h-4" /> Add Item</Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader><DialogTitle>Add New Item</DialogTitle></DialogHeader>
