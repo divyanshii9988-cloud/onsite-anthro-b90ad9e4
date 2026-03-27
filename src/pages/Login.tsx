@@ -64,7 +64,7 @@ export default function Login() {
             <Stethoscope className="h-16 w-16 text-primary" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-4">
-            Onsite Clinic Management Tool
+            TruCare
           </h1>
           <p className="text-white/80 text-lg">
             Streamline your daily clinic operations with our comprehensive digital MIS solution.
